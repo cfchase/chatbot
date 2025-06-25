@@ -1,5 +1,6 @@
 import * as React from 'react';
 import {
+  Alert,
   Button,
   Card,
   CardBody,
@@ -8,11 +9,13 @@ import {
   Form,
   FormGroup,
   PageSection,
+  Spinner,
   TextArea,
   Stack,
   StackItem,
 } from '@patternfly/react-core';
 import { PaperPlaneIcon } from '@patternfly/react-icons';
+import { ChatAPI } from '@app/api/chat';
 
 export interface IChatProps {
   sampleProp?: string;
@@ -35,34 +38,54 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
     },
   ]);
   const [inputValue, setInputValue] = React.useState('');
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
-  const handleSendMessage = () => {
-    if (inputValue.trim()) {
-      const newMessage: ChatMessage = {
+  const handleSendMessage = async () => {
+    if (inputValue.trim() && !isLoading) {
+      const userMessage: ChatMessage = {
         id: Date.now().toString(),
         text: inputValue,
         sender: 'user',
         timestamp: new Date(),
       };
 
-      setMessages((prev) => [...prev, newMessage]);
+      setMessages((prev) => [...prev, userMessage]);
       setInputValue('');
+      setIsLoading(true);
+      setError(null);
 
-      // Simulate bot response
-      setTimeout(() => {
-        const botResponse: ChatMessage = {
+      try {
+        const response = await ChatAPI.createChatCompletion({
+          message: userMessage.text,
+        });
+
+        const botMessage: ChatMessage = {
+          ...response.message,
+          timestamp: new Date(response.message.timestamp),
+        };
+
+        setMessages((prev) => [...prev, botMessage]);
+      } catch (err) {
+        console.error('Error sending message:', err);
+        setError('Failed to send message. Please try again.');
+        
+        // Add error message to chat
+        const errorMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
-          text: `I received your message: "${inputValue}". This is a simple echo response.`,
+          text: 'Sorry, I encountered an error. Please try again.',
           sender: 'bot',
           timestamp: new Date(),
         };
-        setMessages((prev) => [...prev, botResponse]);
-      }, 1000);
+        setMessages((prev) => [...prev, errorMessage]);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
   const handleKeyPress = (event: React.KeyboardEvent) => {
-    if (event.key === 'Enter' && !event.shiftKey) {
+    if (event.key === 'Enter' && !event.shiftKey && !isLoading) {
       event.preventDefault();
       handleSendMessage();
     }
@@ -75,6 +98,9 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
           <CardTitle>Chat</CardTitle>
         </CardHeader>
         <CardBody style={{ flex: 1, overflow: 'auto', padding: '16px' }}>
+          {error && (
+            <Alert variant="danger" title={error} isInline onClose={() => setError(null)} style={{ marginBottom: '16px' }} />
+          )}
           <Stack hasGutter>
             {messages.map((message) => (
               <StackItem key={message.id}>
@@ -111,6 +137,14 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
                 </div>
               </StackItem>
             ))}
+            {isLoading && (
+              <StackItem>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Spinner size="md" />
+                  <span>Bot is typing...</span>
+                </div>
+              </StackItem>
+            )}
           </Stack>
         </CardBody>
         <div style={{ padding: '16px', borderTop: '1px solid #d2d2d2' }}>
@@ -129,8 +163,9 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
                 <Button
                   variant="primary"
                   onClick={handleSendMessage}
-                  isDisabled={!inputValue.trim()}
+                  isDisabled={!inputValue.trim() || isLoading}
                   icon={<PaperPlaneIcon />}
+                  isLoading={isLoading}
                 >
                   Send
                 </Button>
