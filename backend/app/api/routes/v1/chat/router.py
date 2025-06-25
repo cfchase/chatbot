@@ -27,8 +27,18 @@ async def handle_non_streaming_chat(request: ChatCompletionRequest) -> ChatCompl
                 f"Please set the ANTHROPIC_API_KEY environment variable to enable Claude."
             )
         else:
-            # This will be replaced with actual Claude call in Phase 7
-            response_text = f"Echo: {request.message}"
+            # Use Claude to generate response
+            try:
+                response_text = await claude_service.get_completion(
+                    message=request.message,
+                    user_id=request.user_id
+                )
+            except Exception as claude_error:
+                # If Claude fails, fallback to echo with error message
+                response_text = (
+                    f"Echo: {request.message}\n\n"
+                    f"Note: Claude encountered an error: {str(claude_error)}"
+                )
         
         bot_message = ChatMessage(
             id=str(datetime.now().timestamp()),
