@@ -52,8 +52,6 @@ export class ChatAPI {
     onError?: (error: Error) => void,
     onComplete?: () => void
   ): EventSource {
-    const eventSource = new EventSource(`${API_BASE_URL}/chat/completions?stream=true`);
-    
     // We need to use fetch for POST with EventSource, so let's use a different approach
     const controller = new AbortController();
     
