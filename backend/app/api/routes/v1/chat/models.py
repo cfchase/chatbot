@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 class ChatCompletionRequest(BaseModel):
     """Request model for chat completions"""
     message: str = Field(..., description="The user's message to send to the chatbot")
+    stream: bool = Field(False, description="Whether to stream the response")
     user_id: str | None = Field(None, description="Optional user identifier")
 
 
