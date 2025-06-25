@@ -16,7 +16,19 @@ async def handle_non_streaming_chat(request: ChatCompletionRequest) -> ChatCompl
     Returns a complete response with the full message
     """
     try:
-        response_text = f"Echo: {request.message}"
+        # Check if we have Claude service available
+        from app.services.claude import claude_service
+        
+        if not claude_service.is_available:
+            # Fallback to echo mode with informative message
+            response_text = (
+                f"Echo: {request.message}\n\n"
+                f"Note: Claude AI is not available. No Anthropic API key has been provided. "
+                f"Please set the ANTHROPIC_API_KEY environment variable to enable Claude."
+            )
+        else:
+            # This will be replaced with actual Claude call in Phase 7
+            response_text = f"Echo: {request.message}"
         
         bot_message = ChatMessage(
             id=str(datetime.now().timestamp()),
@@ -44,41 +56,64 @@ async def generate_streaming_response(request: ChatCompletionRequest) -> AsyncGe
     Yields Server-Sent Events with incremental content
     """
     try:
-        # Simulate streaming by echoing back character by character
-        response_prefix = "Echo: "
+        # Check if we have Claude service available
+        from app.services.claude import claude_service
+        
         message_id = str(datetime.now().timestamp())
         
-        # Stream the prefix first
-        for char in response_prefix:
-            data = {
-                "id": message_id,
-                "type": "content",
-                "content": char
-            }
-            yield f"data: {json.dumps(data)}\n\n"
-            await asyncio.sleep(0.02)  # Simulate typing delay
-        
-        # Stream each word
-        words = request.message.split()
-        for i, word in enumerate(words):
-            # Add space before word if not first word
-            if i > 0:
-                data = {
-                    "id": message_id,
-                    "type": "content",
-                    "content": " "
-                }
-                yield f"data: {json.dumps(data)}\n\n"
+        if not claude_service.is_available:
+            # Fallback to echo mode with informative message
+            full_message = (
+                f"Echo: {request.message}\n\n"
+                f"Note: Claude AI is not available. No Anthropic API key has been provided. "
+                f"Please set the ANTHROPIC_API_KEY environment variable to enable Claude."
+            )
             
-            # Stream each character of the word
-            for char in word:
+            # Stream the full message character by character
+            for char in full_message:
                 data = {
                     "id": message_id,
                     "type": "content",
                     "content": char
                 }
                 yield f"data: {json.dumps(data)}\n\n"
-                await asyncio.sleep(0.02)  # Simulate typing delay
+                await asyncio.sleep(0.01)  # Faster for the notice
+        else:
+            # This will be replaced with actual Claude streaming in Phase 8
+            # For now, simulate streaming by echoing back
+            response_prefix = "Echo: "
+            
+            # Stream the prefix first
+            for char in response_prefix:
+                data = {
+                    "id": message_id,
+                    "type": "content",
+                    "content": char
+                }
+                yield f"data: {json.dumps(data)}\n\n"
+                await asyncio.sleep(0.02)
+            
+            # Stream each word
+            words = request.message.split()
+            for i, word in enumerate(words):
+                # Add space before word if not first word
+                if i > 0:
+                    data = {
+                        "id": message_id,
+                        "type": "content",
+                        "content": " "
+                    }
+                    yield f"data: {json.dumps(data)}\n\n"
+                
+                # Stream each character of the word
+                for char in word:
+                    data = {
+                        "id": message_id,
+                        "type": "content",
+                        "content": char
+                    }
+                    yield f"data: {json.dumps(data)}\n\n"
+                    await asyncio.sleep(0.02)
         
         # Send completion message
         completion_data = {
