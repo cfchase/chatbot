@@ -10,12 +10,13 @@ import {
   FormGroup,
   PageSection,
   Spinner,
+  Switch,
   TextArea,
   Stack,
   StackItem,
 } from '@patternfly/react-core';
 import { PaperPlaneIcon } from '@patternfly/react-icons';
-import { ChatAPI } from '@app/api/chat';
+import { ChatAPI, StreamingEvent } from '@app/api/chat';
 
 export interface IChatProps {
   sampleProp?: string;
@@ -40,6 +41,8 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
   const [inputValue, setInputValue] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [streamingMode, setStreamingMode] = React.useState(false);
+  const streamControllerRef = React.useRef<EventSource | null>(null);
 
   const handleSendMessage = async () => {
     if (inputValue.trim() && !isLoading) {
@@ -56,16 +59,69 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
       setError(null);
 
       try {
-        const response = await ChatAPI.createChatCompletion({
-          message: userMessage.text,
-        });
+        if (streamingMode) {
+          // Streaming mode
+          let accumulatedText = '';
+          
+          const botMessage: ChatMessage = {
+            id: Date.now().toString() + '-bot',
+            text: '',
+            sender: 'bot',
+            timestamp: new Date(),
+          };
+          
+          setMessages((prev) => [...prev, botMessage]);
+          
+          streamControllerRef.current = ChatAPI.createStreamingChatCompletion(
+            {
+              message: userMessage.text,
+              stream: true,
+            },
+            (event: StreamingEvent) => {
+              if (event.type === 'content' && event.content) {
+                accumulatedText += event.content;
+                setMessages((prev) => {
+                  const newMessages = [...prev];
+                  const lastMessage = newMessages[newMessages.length - 1];
+                  if (lastMessage && lastMessage.id === botMessage.id) {
+                    lastMessage.text = accumulatedText;
+                  }
+                  return newMessages;
+                });
+              } else if (event.type === 'done') {
+                setIsLoading(false);
+                streamControllerRef.current = null;
+              } else if (event.type === 'error') {
+                setError(event.error || 'Streaming error occurred');
+                setIsLoading(false);
+                streamControllerRef.current = null;
+              }
+            },
+            (error) => {
+              console.error('Streaming error:', error);
+              setError('Failed to stream message. Please try again.');
+              setIsLoading(false);
+              streamControllerRef.current = null;
+            },
+            () => {
+              setIsLoading(false);
+              streamControllerRef.current = null;
+            }
+          );
+        } else {
+          // Non-streaming mode
+          const response = await ChatAPI.createChatCompletion({
+            message: userMessage.text,
+            stream: false,
+          });
 
-        const botMessage: ChatMessage = {
-          ...response.message,
-          timestamp: new Date(response.message.timestamp),
-        };
+          const botMessage: ChatMessage = {
+            ...response.message,
+            timestamp: new Date(response.message.timestamp),
+          };
 
-        setMessages((prev) => [...prev, botMessage]);
+          setMessages((prev) => [...prev, botMessage]);
+        }
       } catch (err) {
         console.error('Error sending message:', err);
         setError('Failed to send message. Please try again.');
@@ -79,7 +135,9 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
         };
         setMessages((prev) => [...prev, errorMessage]);
       } finally {
-        setIsLoading(false);
+        if (!streamingMode) {
+          setIsLoading(false);
+        }
       }
     }
   };
@@ -91,15 +149,39 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
     }
   };
 
+  // Cleanup streaming on unmount
+  React.useEffect(() => {
+    return () => {
+      if (streamControllerRef.current) {
+        streamControllerRef.current.close();
+      }
+    };
+  }, []);
+
   return (
     <PageSection hasBodyWrapper={false}>
       <Card style={{ height: '600px', display: 'flex', flexDirection: 'column' }}>
         <CardHeader>
-          <CardTitle>Chat</CardTitle>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <CardTitle>Chat</CardTitle>
+            <Switch
+              id="streaming-mode"
+              label="Streaming mode"
+              isChecked={streamingMode}
+              onChange={(_event, checked) => setStreamingMode(checked)}
+              isDisabled={isLoading}
+            />
+          </div>
         </CardHeader>
         <CardBody style={{ flex: 1, overflow: 'auto', padding: '16px' }}>
           {error && (
-            <Alert variant="danger" title={error} isInline onClose={() => setError(null)} style={{ marginBottom: '16px' }} />
+            <Alert 
+              variant="danger" 
+              title={error} 
+              isInline 
+              actionClose={<Button variant="plain" onClick={() => setError(null)} aria-label="Close alert" />}
+              style={{ marginBottom: '16px' }} 
+            />
           )}
           <Stack hasGutter>
             {messages.map((message) => (
@@ -137,7 +219,7 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
                 </div>
               </StackItem>
             ))}
-            {isLoading && (
+            {isLoading && !streamingMode && (
               <StackItem>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Spinner size="md" />
