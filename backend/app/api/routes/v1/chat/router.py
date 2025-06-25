@@ -89,41 +89,29 @@ async def generate_streaming_response(request: ChatCompletionRequest) -> AsyncGe
                 yield f"data: {json.dumps(data)}\n\n"
                 await asyncio.sleep(0.01)  # Faster for the notice
         else:
-            # This will be replaced with actual Claude streaming in Phase 8
-            # For now, simulate streaming by echoing back
-            response_prefix = "Echo: "
-            
-            # Stream the prefix first
-            for char in response_prefix:
-                data = {
-                    "id": message_id,
-                    "type": "content",
-                    "content": char
-                }
-                yield f"data: {json.dumps(data)}\n\n"
-                await asyncio.sleep(0.02)
-            
-            # Stream each word
-            words = request.message.split()
-            for i, word in enumerate(words):
-                # Add space before word if not first word
-                if i > 0:
+            # Use Claude streaming
+            try:
+                async for chunk in claude_service.get_streaming_completion(
+                    message=request.message,
+                    user_id=request.user_id
+                ):
                     data = {
                         "id": message_id,
                         "type": "content",
-                        "content": " "
+                        "content": chunk
                     }
                     yield f"data: {json.dumps(data)}\n\n"
-                
-                # Stream each character of the word
-                for char in word:
+            except Exception as claude_error:
+                # If Claude fails, send error message
+                error_msg = f"\n\nError: Claude encountered an error: {str(claude_error)}"
+                for char in error_msg:
                     data = {
                         "id": message_id,
                         "type": "content",
                         "content": char
                     }
                     yield f"data: {json.dumps(data)}\n\n"
-                    await asyncio.sleep(0.02)
+                    await asyncio.sleep(0.01)
         
         # Send completion message
         completion_data = {

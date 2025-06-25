@@ -110,7 +110,13 @@ class ClaudeService:
                             
         except Exception as e:
             logger.error(f"Error getting streaming Claude completion: {str(e)}")
-            raise
+            # Add more context to the error
+            if "api_key" in str(e).lower():
+                raise Exception("Invalid or missing API key")
+            elif "rate" in str(e).lower():
+                raise Exception("Rate limit exceeded. Please try again later.")
+            else:
+                raise Exception(f"Claude API error: {str(e)}")
 
 
 # Create a global instance
