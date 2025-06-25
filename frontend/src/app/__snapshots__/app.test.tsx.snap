@@ -1,6 +1,6 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`App tests should render default App component 1`] = `
+exports[`App tests > should render default App component 1`] = `
 <DocumentFragment>
   <div
     class="pf-v6-c-page"
@@ -9,7 +9,6 @@ exports[`App tests should render default App component 1`] = `
       class="pf-v6-c-skip-to-content"
     >
       <a
-        aria-disabled="false"
         class="pf-v6-c-button pf-m-primary"
         data-ouia-component-id="OUIA-Generated-Button-primary-1"
         data-ouia-component-type="PF6/Button"
@@ -33,7 +32,6 @@ exports[`App tests should render default App component 1`] = `
           class="pf-v6-c-masthead__toggle"
         >
           <button
-            aria-disabled="false"
             aria-label="Global navigation"
             class="pf-v6-c-button pf-m-plain"
             data-ouia-component-id="OUIA-Generated-Button-plain-1"
@@ -189,7 +187,6 @@ exports[`App tests should render default App component 1`] = `
               <a
                 aria-current="page"
                 class="pf-v6-c-nav__link pf-m-current active"
-                data-discover="true"
                 href="/"
               >
                 Dashboard
@@ -203,10 +200,9 @@ exports[`App tests should render default App component 1`] = `
             >
               <a
                 class="pf-v6-c-nav__link"
-                data-discover="true"
-                href="/support"
+                href="/chat"
               >
-                Support
+                Chat
               </a>
             </li>
             <li
@@ -260,7 +256,6 @@ exports[`App tests should render default App component 1`] = `
                   >
                     <a
                       class="pf-v6-c-nav__link"
-                      data-discover="true"
                       href="/settings/general"
                     >
                       General
@@ -274,7 +269,6 @@ exports[`App tests should render default App component 1`] = `
                   >
                     <a
                       class="pf-v6-c-nav__link"
-                      data-discover="true"
                       href="/settings/profile"
                     >
                       Profile
@@ -306,6 +300,23 @@ exports[`App tests should render default App component 1`] = `
           >
             Dashboard Page Title!
           </h1>
+          <div
+            style="margin-top: 20px;"
+          >
+            <button
+              class="pf-v6-c-button pf-m-primary pf-m-progress"
+              data-ouia-component-id="OUIA-Generated-Button-primary-2"
+              data-ouia-component-type="PF6/Button"
+              data-ouia-safe="true"
+              type="button"
+            >
+              <span
+                class="pf-v6-c-button__text"
+              >
+                Check Backend Health
+              </span>
+            </button>
+          </div>
         </section>
       </main>
     </div>
