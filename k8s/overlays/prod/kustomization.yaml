@@ -4,7 +4,7 @@ kind: Kustomization
 resources:
   - ../../base
 
-namespace: patternfly-fastapi-prod
+namespace: chatbot-prod
 
 commonLabels:
   environment: production
@@ -19,7 +19,7 @@ replicas:
     count: 2
 
 images:
-  - name: quay.io/cfchase/patternfly-fastapi-backend
+  - name: quay.io/cfchase/chatbot-backend
     newTag: prod
-  - name: quay.io/cfchase/patternfly-fastapi-frontend
+  - name: quay.io/cfchase/chatbot-frontend
     newTag: prod

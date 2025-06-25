@@ -1,6 +1,6 @@
-# PatternFly FastAPI Template
+# Chatbot
 
-A full-stack application template with React frontend (Vite) using PatternFly and FastAPI backend, ready for deployment to OpenShift.
+A full-stack chatbot application with React frontend (Vite) using PatternFly and FastAPI backend, ready for deployment to OpenShift.
 
 ## Architecture
 
@@ -25,8 +25,8 @@ A full-stack application template with React frontend (Vite) using PatternFly an
 
 1. **Clone and setup**:
    ```bash
-   git clone https://github.com/cfchase/patternfly-fastapi-template
-   cd patternfly-fastapi-template
+   git clone https://github.com/cfchase/chatbot
+   cd chatbot
    make setup
    # or alternatively: npm run setup
    ```

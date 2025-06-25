@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: quay.io/cfchase/patternfly-fastapi-frontend:latest
+        image: quay.io/cfchase/chatbot-frontend:latest
         ports:
         - containerPort: 8080
         resources:

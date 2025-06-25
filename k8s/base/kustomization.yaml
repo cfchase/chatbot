@@ -9,11 +9,11 @@ resources:
   - route.yaml
 
 commonLabels:
-  app.kubernetes.io/name: patternfly-fastapi-template
+  app.kubernetes.io/name: chatbot
   app.kubernetes.io/version: "1.0.0"
 
 images:
-  - name: quay.io/cfchase/patternfly-fastapi-backend
+  - name: quay.io/cfchase/chatbot-backend
     newTag: latest
-  - name: quay.io/cfchase/patternfly-fastapi-frontend
+  - name: quay.io/cfchase/chatbot-frontend
     newTag: latest

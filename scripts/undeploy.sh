@@ -6,7 +6,7 @@
 set -e
 
 ENVIRONMENT=${1:-dev}
-NAMESPACE=${2:-patternfly-fastapi-${ENVIRONMENT}}
+NAMESPACE=${2:-chatbot-${ENVIRONMENT}}
 
 if [[ "$ENVIRONMENT" != "dev" && "$ENVIRONMENT" != "prod" ]]; then
     echo "Error: Environment must be 'dev' or 'prod'"

@@ -4,7 +4,7 @@ kind: Kustomization
 resources:
   - ../../base
 
-namespace: patternfly-fastapi-dev
+namespace: chatbot-dev
 
 commonLabels:
   environment: development
@@ -13,7 +13,7 @@ patchesStrategicMerge:
   - deployment-patch.yaml
 
 images:
-  - name: quay.io/cfchase/patternfly-fastapi-backend
+  - name: quay.io/cfchase/chatbot-backend
     newTag: latest
-  - name: quay.io/cfchase/patternfly-fastapi-frontend
+  - name: quay.io/cfchase/chatbot-frontend
     newTag: latest
