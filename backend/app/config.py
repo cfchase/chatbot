@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     anthropic_api_key: Optional[str] = Field(default=None, description="Anthropic API key for Claude")
     
     # Model Settings
-    claude_model: str = Field(default="claude-3-5-sonnet-20241022", description="Claude model to use")
+    claude_model: Optional[str] = Field(default=None, description="Claude model to use (auto-selects if not provided)")
     max_tokens: int = Field(default=1024, description="Maximum tokens for Claude responses")
     temperature: float = Field(default=0.7, description="Temperature for Claude responses")
     

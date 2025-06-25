@@ -35,10 +35,17 @@ async def root():
 @app.on_event("startup")
 async def startup_event():
     """Log configuration status on startup"""
+    from app.services.claude import claude_service
+    
     logger.info(f"Starting application in {settings.environment} mode")
     logger.info(f"Claude integration: {'Enabled' if settings.anthropic_api_key else 'Disabled'}")
+    
+    # Model selection happens on first use, so we just log that it's enabled
     if settings.anthropic_api_key:
-        logger.info(f"Using Claude model: {settings.claude_model}")
+        if settings.claude_model:
+            logger.info(f"Claude model configured: {settings.claude_model}")
+        else:
+            logger.info("Claude model will be auto-selected on first use")
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
