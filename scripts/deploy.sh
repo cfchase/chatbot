@@ -5,15 +5,15 @@
 
 set -e
 
-ENVIRONMENT=${1:-dev}
-NAMESPACE=${2:-chatbot-${ENVIRONMENT}}
+DEPLOY_ENV=${1:-dev}
+NAMESPACE=${2:-chatbot-${DEPLOY_ENV}}
 
-if [[ "$ENVIRONMENT" != "dev" && "$ENVIRONMENT" != "prod" ]]; then
+if [[ "$DEPLOY_ENV" != "dev" && "$DEPLOY_ENV" != "prod" ]]; then
     echo "Error: Environment must be 'dev' or 'prod'"
     exit 1
 fi
 
-echo "Deploying to $ENVIRONMENT environment..."
+echo "Deploying to $DEPLOY_ENV environment..."
 echo "Namespace: $NAMESPACE"
 
 # Check if oc is available
@@ -40,7 +40,7 @@ oc create namespace "$NAMESPACE" --dry-run=client -o yaml | oc apply -f -
 
 # Apply kustomize configuration
 echo "Applying kustomize configuration..."
-kustomize build "k8s/overlays/$ENVIRONMENT" | oc apply -f -
+kustomize build "k8s/overlays/$DEPLOY_ENV" | oc apply -f -
 
 echo "Deployment complete!"
 echo "You can check the status with:"

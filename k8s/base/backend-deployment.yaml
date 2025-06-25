@@ -26,6 +26,9 @@ spec:
           value: "8000"
         - name: ENVIRONMENT
           value: "production"
+        envFrom:
+        - secretRef:
+            name: backend-secret
         resources:
           requests:
             memory: "128Mi"
