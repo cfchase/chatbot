@@ -23,17 +23,24 @@ export interface IAppRouteGroup {
 export type AppRouteConfig = IAppRoute | IAppRouteGroup;
 
 const routes: AppRouteConfig[] = [
-  {
-    element: <Dashboard />,
-    exact: true,
-    label: 'Dashboard',
-    path: '/',
-    title: 'Chatbot | Dashboard',
-  },
+  // {
+  //   element: <Dashboard />,
+  //   exact: true,
+  //   label: 'Dashboard',
+  //   path: '/',
+  //   title: 'Chatbot | Dashboard',
+  // },
   {
     element: <Chat />,
     exact: true,
     label: 'Chat',
+    path: '/',
+    title: 'Chatbot | Chat',
+  },
+  {
+    element: <Chat />,
+    exact: true,
+    // label: 'Chat', // Removing duplicate nav item
     path: '/chat',
     title: 'Chatbot | Chat',
   },
