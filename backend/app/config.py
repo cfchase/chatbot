@@ -1,4 +1,3 @@
-import os
 from typing import Optional
 from pydantic_settings import BaseSettings
 from pydantic import Field
@@ -13,9 +12,9 @@ class Settings(BaseSettings):
     
     # Anthropic Settings
     anthropic_api_key: Optional[str] = Field(default=None, description="Anthropic API key for Claude")
+    anthropic_model: str = Field(default="claude-sonnet-4-20250514", description="Anthropic model to use")
     
     # Model Settings
-    claude_model: Optional[str] = Field(default=None, description="Claude model to use (auto-selects if not provided)")
     max_tokens: int = Field(default=1024, description="Maximum tokens for Claude responses")
     temperature: float = Field(default=0.7, description="Temperature for Claude responses")
     
