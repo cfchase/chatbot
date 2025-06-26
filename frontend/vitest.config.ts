@@ -8,7 +8,14 @@ const __dirname = resolve(__filename, '..');
 export default defineConfig({
   test: {
     globals: true,
-    environment: 'jsdom',
+    browser: {
+      enabled: true,
+      provider: 'playwright',
+      headless: true,
+      instances: [
+        { browser: 'chromium' }
+      ],
+    },
     setupFiles: './src/setupTests.ts',
   },
   resolve: {

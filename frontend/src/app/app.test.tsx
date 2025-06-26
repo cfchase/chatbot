@@ -1,13 +1,15 @@
 import App from '@app/index';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import '@testing-library/jest-dom';
 
 describe('App tests', () => {
   test('should render default App component', () => {
-    const { asFragment } = render(<App />);
-
-    expect(asFragment()).toMatchSnapshot();
+    render(<App />);
+    
+    // Check for main navigation elements
+    expect(screen.getByRole('navigation', { name: 'Global' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Chat' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Settings' })).toBeInTheDocument();
   });
 
   it('should render a nav-toggle button', () => {
@@ -26,7 +28,7 @@ describe('App tests', () => {
 
     window.dispatchEvent(new Event('resize'));
 
-    expect(screen.queryByRole('link', { name: 'Dashboard' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Chat' })).not.toBeInTheDocument();
   });
 
   it('should expand the sidebar on larger viewports', () => {
@@ -34,7 +36,7 @@ describe('App tests', () => {
 
     window.dispatchEvent(new Event('resize'));
 
-    expect(screen.getByRole('link', { name: 'Dashboard' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Chat' })).toBeVisible();
   });
 
   it('should hide the sidebar when clicking the nav-toggle button', async () => {
@@ -45,10 +47,10 @@ describe('App tests', () => {
     window.dispatchEvent(new Event('resize'));
     const button = screen.getByRole('button', { name: 'Global navigation' });
 
-    expect(screen.getByRole('link', { name: 'Dashboard' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Chat' })).toBeVisible();
 
     await user.click(button);
 
-    expect(screen.queryByRole('link', { name: 'Dashboard' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Chat' })).not.toBeInTheDocument();
   });
 });

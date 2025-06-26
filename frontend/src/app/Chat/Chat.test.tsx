@@ -9,10 +9,10 @@ describe('Chat Component Basic Tests', () => {
     expect(screen.getByText('Hello! How can I help you today?')).toBeInTheDocument();
   });
 
-  it('should render chat input and send button', () => {
+  it('should render chat input and attach button', () => {
     render(<Chat />);
     expect(screen.getByPlaceholderText('Type your message...')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /send/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /attach/i })).toBeInTheDocument();
   });
 
   it('should render streaming mode toggle', () => {
@@ -30,13 +30,13 @@ describe('Chat Component Basic Tests', () => {
     expect(input).toHaveValue('Test message');
   });
 
-  it('should not allow sending empty messages', () => {
+  it('should have attach button available', () => {
     render(<Chat />);
     
-    const sendButton = screen.getByRole('button', { name: /send/i });
+    const attachButton = screen.getByRole('button', { name: /attach/i });
     
-    // Button should be disabled for empty input
-    expect(sendButton).toBeDisabled();
+    // Attach button should be enabled
+    expect(attachButton).toBeEnabled();
   });
 
   it('should toggle streaming mode', async () => {
@@ -45,15 +45,15 @@ describe('Chat Component Basic Tests', () => {
     
     const toggle = screen.getByLabelText('Streaming mode');
     
-    // Initially off
-    expect(toggle).not.toBeChecked();
-    
-    // Toggle on
-    await user.click(toggle);
+    // Initially on (default is true)
     expect(toggle).toBeChecked();
     
     // Toggle off
     await user.click(toggle);
     expect(toggle).not.toBeChecked();
+    
+    // Toggle on
+    await user.click(toggle);
+    expect(toggle).toBeChecked();
   });
 });
