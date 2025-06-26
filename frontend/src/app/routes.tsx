@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Route, Routes } from 'react-router-dom';
-import { Dashboard } from '@app/Dashboard/Dashboard';
+// import { Dashboard } from '@app/Dashboard/Dashboard';
 import { Chat } from '@app/Chat/Chat';
 import { GeneralSettings } from '@app/Settings/General/GeneralSettings';
 import { ProfileSettings } from '@app/Settings/Profile/ProfileSettings';

@@ -18,7 +18,7 @@ import {
 } from '@patternfly/react-core';
 import { IAppRoute, IAppRouteGroup, routes } from '@app/routes';
 import { BarsIcon } from '@patternfly/react-icons';
-import aiLogo from '@app/bgimages/ai-logo-transparent.svg';
+import aiLogo from '@app/images/ai-logo-transparent.svg';
 
 interface IAppLayout {
   children: React.ReactNode;

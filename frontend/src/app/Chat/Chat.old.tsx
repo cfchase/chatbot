@@ -2,26 +2,21 @@ import * as React from 'react';
 import {
   Alert,
   Button,
+  Card,
+  CardBody,
+  CardHeader,
+  CardTitle,
+  Form,
+  FormGroup,
   PageSection,
+  Spinner,
   Switch,
+  TextArea,
+  Stack,
+  StackItem,
 } from '@patternfly/react-core';
-import {
-  Chatbot,
-  ChatbotContent,
-  ChatbotDisplayMode,
-  ChatbotFooter,
-  ChatbotFootnote,
-  ChatbotHeader,
-  ChatbotHeaderMain,
-  ChatbotHeaderTitle,
-  ChatbotHeaderActions,
-  Message,
-  MessageBar,
-  MessageBox,
-} from '@patternfly/chatbot';
+import { PaperPlaneIcon } from '@patternfly/react-icons';
 import { ChatAPI, StreamingEvent } from '@app/api/chat';
-import aiLogo from '@app/images/ai-logo-transparent.svg';
-import avatarImg from '@app/images/user-avatar.svg';
 
 export interface IChatProps {
   sampleProp?: string;
@@ -46,17 +41,14 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
   const [inputValue, setInputValue] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [streamingMode, setStreamingMode] = React.useState(true);
+  const [streamingMode, setStreamingMode] = React.useState(false);
   const streamControllerRef = React.useRef<EventSource | null>(null);
-  const [announcement, setAnnouncement] = React.useState<string | undefined>();
 
-  const handleSendMessage = async (message: string | number) => {
-    const messageText = typeof message === 'string' ? message : message.toString();
-    
-    if (messageText.trim() && !isLoading) {
+  const handleSendMessage = async () => {
+    if (inputValue.trim() && !isLoading) {
       const userMessage: ChatMessage = {
         id: Date.now().toString(),
-        text: messageText,
+        text: inputValue,
         sender: 'user',
         timestamp: new Date(),
       };
@@ -99,7 +91,6 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
               } else if (event.type === 'done') {
                 setIsLoading(false);
                 streamControllerRef.current = null;
-                setAnnouncement('Message received');
               } else if (event.type === 'error') {
                 setError(event.error || 'Streaming error occurred');
                 setIsLoading(false);
@@ -130,7 +121,6 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
           };
 
           setMessages((prev) => [...prev, botMessage]);
-          setAnnouncement('Message received');
         }
       } catch (err) {
         console.error('Error sending message:', err);
@@ -152,11 +142,10 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
     }
   };
 
-  const handleStopStreaming = () => {
-    if (streamControllerRef.current) {
-      streamControllerRef.current.close();
-      streamControllerRef.current = null;
-      setIsLoading(false);
+  const handleKeyPress = (event: React.KeyboardEvent) => {
+    if (event.key === 'Enter' && !event.shiftKey && !isLoading) {
+      event.preventDefault();
+      handleSendMessage();
     }
   };
 
@@ -169,81 +158,104 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
     };
   }, []);
 
-  const displayMode = ChatbotDisplayMode.embedded;
-
   return (
     <PageSection hasBodyWrapper={false}>
-      <Chatbot displayMode={displayMode} isVisible>
-        <ChatbotHeader>
-          <ChatbotHeaderMain>
-            <ChatbotHeaderTitle>Chat</ChatbotHeaderTitle>
-            <ChatbotHeaderActions>
-              <Switch
-                id="streaming-mode"
-                label="Streaming mode"
-                isChecked={streamingMode}
-                onChange={(_event, checked) => setStreamingMode(checked)}
-                isDisabled={isLoading}
-              />
-            </ChatbotHeaderActions>
-          </ChatbotHeaderMain>
-        </ChatbotHeader>
-        <ChatbotContent>
-          <MessageBox announcement={announcement} ariaLabel="Chat messages">
-            {error && (
-              <Alert 
-                variant="danger" 
-                title={error} 
-                isInline 
-                actionClose={<Button variant="plain" onClick={() => setError(null)} aria-label="Close alert" />}
-                style={{ marginBottom: '16px' }} 
-              />
-            )}
-            {messages.map((message, index) => {
-              const isLastBotMessage = 
-                message.sender === 'bot' && 
-                index === messages.length - 1 && 
-                isLoading && 
-                streamingMode;
-
-              return (
-                <Message
-                  key={message.id}
-                  id={message.id}
-                  role={message.sender === 'user' ? 'user' : 'bot'}
-                  content={message.text}
-                  timestamp={message.timestamp.toLocaleTimeString()}
-                  avatar={message.sender === 'user' ? avatarImg : aiLogo}
-                  name={message.sender === 'user' ? 'You' : 'Claude AI'}
-                  isLoading={isLastBotMessage}
-                />
-              );
-            })}
+      <Card style={{ height: '600px', display: 'flex', flexDirection: 'column' }}>
+        <CardHeader>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <CardTitle>Chat</CardTitle>
+            <Switch
+              id="streaming-mode"
+              label="Streaming mode"
+              isChecked={streamingMode}
+              onChange={(_event, checked) => setStreamingMode(checked)}
+              isDisabled={isLoading}
+            />
+          </div>
+        </CardHeader>
+        <CardBody style={{ flex: 1, overflow: 'auto', padding: '16px' }}>
+          {error && (
+            <Alert 
+              variant="danger" 
+              title={error} 
+              isInline 
+              actionClose={<Button variant="plain" onClick={() => setError(null)} aria-label="Close alert" />}
+              style={{ marginBottom: '16px' }} 
+            />
+          )}
+          <Stack hasGutter>
+            {messages.map((message) => (
+              <StackItem key={message.id}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: message.sender === 'user' ? 'flex-end' : 'flex-start',
+                    marginBottom: '8px',
+                  }}
+                >
+                  <div
+                    style={{
+                      maxWidth: '70%',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      backgroundColor: message.sender === 'user' ? '#0066cc' : '#f5f5f5',
+                      color: message.sender === 'user' ? 'white' : 'black',
+                    }}
+                  >
+                    <div>
+                      <p style={{ margin: 0 }}>{message.text}</p>
+                      <small
+                        style={{
+                          opacity: 0.7,
+                          marginTop: '4px',
+                          color: message.sender === 'user' ? 'rgba(255,255,255,0.8)' : '#666',
+                          display: 'block',
+                        }}
+                      >
+                        {message.timestamp.toLocaleTimeString()}
+                      </small>
+                    </div>
+                  </div>
+                </div>
+              </StackItem>
+            ))}
             {isLoading && !streamingMode && (
-              <Message
-                id="loading-message"
-                role="bot"
-                content=""
-                avatar={aiLogo}
-                name="Claude AI"
-                isLoading
-              />
+              <StackItem>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Spinner size="md" />
+                  <span>Bot is typing...</span>
+                </div>
+              </StackItem>
             )}
-          </MessageBox>
-        </ChatbotContent>
-        <ChatbotFooter>
-          <MessageBar
-            onSendMessage={handleSendMessage}
-            hasStopButton={isLoading && streamingMode}
-            handleStopButton={handleStopStreaming}
-            isSendButtonDisabled={!inputValue.trim() || isLoading}
-            value={inputValue}
-            onChange={(_event, value) => setInputValue(value as string)}
-            placeholder="Type your message..."
-          />
-          <ChatbotFootnote label="Powered by Claude AI" />
-        </ChatbotFooter>
-      </Chatbot>
+          </Stack>
+        </CardBody>
+        <div style={{ padding: '16px', borderTop: '1px solid #d2d2d2' }}>
+          <Form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}>
+            <FormGroup fieldId="message-input">
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <TextArea
+                  id="message-input"
+                  value={inputValue}
+                  onChange={(_event, value) => setInputValue(value)}
+                  onKeyDown={handleKeyPress}
+                  placeholder="Type your message..."
+                  rows={2}
+                  style={{ flex: 1 }}
+                />
+                <Button
+                  variant="primary"
+                  onClick={handleSendMessage}
+                  isDisabled={!inputValue.trim() || isLoading}
+                  icon={<PaperPlaneIcon />}
+                  isLoading={isLoading}
+                >
+                  Send
+                </Button>
+              </div>
+            </FormGroup>
+          </Form>
+        </div>
+      </Card>
     </PageSection>
   );
 };
