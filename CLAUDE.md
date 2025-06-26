@@ -15,7 +15,8 @@ This is a React FastAPI template for building full-stack applications with React
 ```
 ├── backend/              # FastAPI backend
 │   ├── main.py          # Main FastAPI application
-│   ├── requirements.txt # Python dependencies
+│   ├── pyproject.toml   # Python dependencies and project config
+│   ├── uv.lock          # Locked dependency versions
 │   └── Dockerfile       # Backend container
 ├── frontend/            # React frontend with Vite
 │   ├── src/            # React source code
@@ -45,7 +46,9 @@ make build                 # Build frontend and container images
 
 ### Testing
 ```bash
-make test             # Run frontend tests
+make test             # Run all tests (frontend and backend)
+make test-frontend    # Run frontend tests only
+make test-backend     # Run backend tests only
 make lint             # Run linting
 ```
 
@@ -91,6 +94,7 @@ make kustomize-prod   # Preview prod manifests
 
 ### Backend (FastAPI)
 - Python 3.11 with FastAPI framework
+- UV package manager for fast dependency management
 - Uvicorn as ASGI server
 - CORS middleware for frontend integration
 - Minimal API with only health check endpoint at `/api/health`
@@ -137,7 +141,8 @@ The FastAPI backend provides:
 
 ### Adding New Dependencies
 - Frontend: `cd frontend && npm install <package>`
-- Backend: Add to `backend/requirements.txt`
+- Backend: `cd backend && uv add <package>` (automatically updates pyproject.toml and uv.lock)
+- Backend Dev Dependencies: `cd backend && uv add --dev <package>`
 
 ### Updating Container Images
 - Update image tags in `k8s/base/kustomization.yaml`

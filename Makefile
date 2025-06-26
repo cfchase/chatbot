@@ -18,14 +18,14 @@ setup: ## Install all dependencies
 	@echo "Installing frontend dependencies..."
 	cd frontend && npm install
 	@echo "Installing backend dependencies..."
-	cd backend && pip install -r requirements.txt
+	cd backend && uv sync --extra dev
 	@echo "Setup complete!"
 
 setup-frontend: ## Install frontend dependencies only
 	cd frontend && npm install
 
 setup-backend: ## Install backend dependencies only
-	cd backend && pip install -r requirements.txt
+	cd backend && uv sync --extra dev
 
 # Development
 dev: ## Run both frontend and backend in development mode
@@ -36,7 +36,7 @@ dev-frontend: ## Run frontend development server
 	cd frontend && npm run dev
 
 dev-backend: ## Run backend development server
-	cd backend && python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+	cd backend && uv run python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 # Building
 build-frontend: ## Build frontend for production
@@ -55,16 +55,16 @@ test: ## Run all tests (frontend and backend)
 	@echo "Running frontend tests..."
 	cd frontend && npm run test
 	@echo "Running backend tests..."
-	cd backend && pytest
+	cd backend && uv run pytest
 
 test-frontend: ## Run frontend tests
 	cd frontend && npm run test
 
 test-backend: ## Run backend tests
-	cd backend && pytest
+	cd backend && uv run pytest
 
 test-backend-verbose: ## Run backend tests with verbose output
-	cd backend && pytest -v
+	cd backend && uv run pytest -v
 
 lint: ## Run linting on frontend
 	cd frontend && npm run lint
