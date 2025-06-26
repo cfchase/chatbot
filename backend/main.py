@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
@@ -10,10 +11,25 @@ from app.config import settings
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    logger.info(f"Starting application in {settings.environment} mode")
+    logger.info(f"Claude integration: {'Enabled' if settings.anthropic_api_key else 'Disabled'}")
+    
+    if settings.anthropic_api_key:
+        logger.info(f"Claude model: {settings.anthropic_model}")
+    
+    yield
+    # Shutdown (if needed)
+
+
 app = FastAPI(
     title="React FastAPI Template API",
     description="A template API built with FastAPI",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Configure CORS
@@ -31,17 +47,6 @@ app.include_router(api_router, prefix="/api")
 @app.get("/")
 async def root():
     return {"message": "React FastAPI Template API"}
-
-@app.on_event("startup")
-async def startup_event():
-    """Log configuration status on startup"""
-    from app.services.claude import claude_service
-    
-    logger.info(f"Starting application in {settings.environment} mode")
-    logger.info(f"Claude integration: {'Enabled' if settings.anthropic_api_key else 'Disabled'}")
-    
-    if settings.anthropic_api_key:
-        logger.info(f"Claude model: {settings.anthropic_model}")
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
