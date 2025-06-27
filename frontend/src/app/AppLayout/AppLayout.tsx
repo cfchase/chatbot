@@ -7,6 +7,7 @@ import {
   MastheadLogo,
   MastheadMain,
   MastheadToggle,
+  MastheadContent,
   Nav,
   NavExpandable,
   NavItem,
@@ -15,10 +16,17 @@ import {
   PageSidebar,
   PageSidebarBody,
   SkipToContent,
+  Toolbar,
+  ToolbarContent,
+  ToolbarGroup,
+  ToolbarItem,
+  ToggleGroup,
+  ToggleGroupItem,
 } from '@patternfly/react-core';
 import { IAppRoute, IAppRouteGroup, routes } from '@app/routes';
-import { BarsIcon } from '@patternfly/react-icons';
+import { BarsIcon, SunIcon, MoonIcon } from '@patternfly/react-icons';
 import aiLogo from '@app/images/ai-logo-transparent.svg';
+import { useTheme } from '@app/contexts/ThemeContext';
 
 interface IAppLayout {
   children: React.ReactNode;
@@ -26,6 +34,7 @@ interface IAppLayout {
 
 const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
+  const { theme, toggleTheme } = useTheme();
   const masthead = (
     <Masthead>
       <MastheadMain>
@@ -56,6 +65,34 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
           </MastheadLogo>
         </MastheadBrand>
       </MastheadMain>
+      <MastheadContent>
+        <Toolbar>
+          <ToolbarContent>
+            <ToolbarGroup align={{ default: 'alignEnd' }}>
+              <ToolbarItem>
+                <ToggleGroup aria-label="Theme toggle">
+                  <ToggleGroupItem
+                    key="light"
+                    buttonId="light"
+                    icon={<SunIcon />}
+                    aria-label="Light theme"
+                    isSelected={theme === 'light'}
+                    onChange={() => theme === 'dark' && toggleTheme()}
+                  />
+                  <ToggleGroupItem
+                    key="dark"
+                    buttonId="dark"
+                    icon={<MoonIcon />}
+                    aria-label="Dark theme"
+                    isSelected={theme === 'dark'}
+                    onChange={() => theme === 'light' && toggleTheme()}
+                  />
+                </ToggleGroup>
+              </ToolbarItem>
+            </ToolbarGroup>
+          </ToolbarContent>
+        </Toolbar>
+      </MastheadContent>
     </Masthead>
   );
 
