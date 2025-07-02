@@ -21,6 +21,20 @@ async def lifespan(app: FastAPI):
     if settings.anthropic_api_key:
         logger.info(f"Claude model: {settings.anthropic_model}")
     
+    # Initialize MCP service
+    try:
+        from app.services.mcp_service import mcp_service
+        mcp_server = mcp_service.get_mcp_server()
+        if mcp_server:
+            # Mount the MCP SSE app
+            mcp_sse_app = mcp_server.sse_app()
+            app.mount("/mcp/sse", mcp_sse_app)
+            logger.info("MCP server mounted at /mcp/sse")
+        else:
+            logger.warning("MCP server not available")
+    except Exception as e:
+        logger.error(f"Error initializing MCP service: {str(e)}")
+    
     yield
     # Shutdown (if needed)
 

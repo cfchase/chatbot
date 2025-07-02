@@ -17,9 +17,9 @@ async def handle_non_streaming_chat(request: ChatCompletionRequest) -> ChatCompl
     """
     try:
         # Check if we have Claude service available
-        from app.services.claude import claude_service
+        from app.services.claude_enhanced import claude_enhanced_service
         
-        if not claude_service.is_available:
+        if not claude_enhanced_service.is_available:
             # Fallback to echo mode with informative message
             response_text = (
                 f"Echo: {request.message}\n\n"
@@ -29,7 +29,7 @@ async def handle_non_streaming_chat(request: ChatCompletionRequest) -> ChatCompl
         else:
             # Use Claude to generate response
             try:
-                response_text = await claude_service.get_completion(
+                response_text = await claude_enhanced_service.get_completion(
                     message=request.message,
                     user_id=request.user_id
                 )
@@ -67,11 +67,11 @@ async def generate_streaming_response(request: ChatCompletionRequest) -> AsyncGe
     """
     try:
         # Check if we have Claude service available
-        from app.services.claude import claude_service
+        from app.services.claude_enhanced import claude_enhanced_service
         
         message_id = str(datetime.now().timestamp())
         
-        if not claude_service.is_available:
+        if not claude_enhanced_service.is_available:
             # Fallback to echo mode with informative message
             full_message = (
                 f"Echo: {request.message}\n\n"
@@ -91,7 +91,7 @@ async def generate_streaming_response(request: ChatCompletionRequest) -> AsyncGe
         else:
             # Use Claude streaming
             try:
-                async for chunk in claude_service.get_streaming_completion(
+                async for chunk in claude_enhanced_service.get_streaming_completion(
                     message=request.message,
                     user_id=request.user_id
                 ):

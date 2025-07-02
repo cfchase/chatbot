@@ -1,0 +1,103 @@
+{
+  "mcp_server": {
+    "name": "chatbot-mcp-server",
+    "version": "1.0.0",
+    "description": "MCP server providing tools for the chatbot application",
+    "tools": [
+      {
+        "name": "get_current_time",
+        "description": "Get the current date and time",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "timezone": {
+              "type": "string",
+              "description": "The timezone to get the time in (e.g., 'UTC', 'America/New_York')",
+              "default": "UTC"
+            }
+          }
+        }
+      },
+      {
+        "name": "calculate",
+        "description": "Perform basic mathematical calculations",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "expression": {
+              "type": "string",
+              "description": "Mathematical expression to evaluate (e.g., '2 + 3 * 4')"
+            }
+          },
+          "required": ["expression"]
+        }
+      },
+      {
+        "name": "generate_uuid",
+        "description": "Generate a random UUID",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "version": {
+              "type": "integer",
+              "description": "UUID version (1 or 4)",
+              "enum": [1, 4],
+              "default": 4
+            }
+          }
+        }
+      },
+      {
+        "name": "encode_decode_text",
+        "description": "Encode or decode text using various methods",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "description": "The text to encode or decode"
+            },
+            "operation": {
+              "type": "string",
+              "description": "The operation to perform",
+              "enum": ["base64_encode", "base64_decode", "url_encode", "url_decode"]
+            }
+          },
+          "required": ["text", "operation"]
+        }
+      },
+      {
+        "name": "weather_info",
+        "description": "Get weather information for a location (mock data)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "location": {
+              "type": "string",
+              "description": "The location to get weather for (e.g., 'New York, NY')"
+            },
+            "units": {
+              "type": "string",
+              "description": "Temperature units",
+              "enum": ["celsius", "fahrenheit"],
+              "default": "celsius"
+            }
+          },
+          "required": ["location"]
+        }
+      }
+    ],
+    "resources": [
+      {
+        "name": "server_status",
+        "description": "Get the current server status and health information",
+        "uri": "status://health"
+      },
+      {
+        "name": "available_tools",
+        "description": "List all available tools and their descriptions",
+        "uri": "tools://list"
+      }
+    ]
+  }
+}
