@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     # Model Settings
     max_tokens: int = Field(default=1024, description="Maximum tokens for Claude responses")
     temperature: float = Field(default=0.7, description="Temperature for Claude responses")
+    
+    # MCP Settings
+    mcp_config_path: str = Field(default="mcp-config.json", description="Path to MCP configuration file")
 
 
 # Create global settings instance

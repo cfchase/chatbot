@@ -4,8 +4,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Claude Code Settings
 
-- **Commit messages**: Do not include Claude Code attribution in commit messages
-
 ## Repository Overview
 
 This is a React FastAPI template for building full-stack applications with React frontend (Vite) and FastAPI backend, designed for deployment to OpenShift using Docker containers and Kustomize.
@@ -165,3 +163,13 @@ The FastAPI backend provides:
 - Update frontend components in `frontend/src/`
 - Update .env files with your actual API keys
 - The template provides a minimal foundation - add your business logic as needed
+
+## Git Commit Guidelines
+
+When creating commits in this repository:
+- **DO NOT** include Claude Code attribution in commit messages
+- **DO NOT** include Claude-specific references in commit messages
+- **DO NOT** mention "Generated with Claude Code" or similar attributions
+- **DO NOT** add Co-Authored-By references to Claude
+- Focus commit messages on the technical changes made
+- Use conventional commit format when appropriate (feat:, fix:, docs:, etc.)

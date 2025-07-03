@@ -6,6 +6,7 @@ import os
 import logging
 from app.api.router import router as api_router
 from app.config import settings
+from app.services.mcp_service import mcp_service
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -21,8 +22,20 @@ async def lifespan(app: FastAPI):
     if settings.anthropic_api_key:
         logger.info(f"Claude model: {settings.anthropic_model}")
     
+    # Initialize MCP service
+    logger.info("Initializing MCP service...")
+    await mcp_service.initialize()
+    
+    if mcp_service.is_available:
+        logger.info(f"MCP service initialized with {len(mcp_service.get_tools())} tools")
+    else:
+        logger.info("MCP service initialized with no tools available")
+    
     yield
-    # Shutdown (if needed)
+    
+    # Shutdown
+    logger.info("Shutting down MCP service...")
+    await mcp_service.shutdown()
 
 
 app = FastAPI(
