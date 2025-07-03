@@ -58,6 +58,7 @@ class TestClaudeMCPIntegration:
             mock_response = MagicMock()
             mock_text_block = MagicMock()
             mock_text_block.text = "The weather looks nice today!"
+            mock_text_block.type = "text"
             mock_response.content = [mock_text_block]
             mock_anthropic_client.messages.create.return_value = mock_response
             
@@ -88,6 +89,7 @@ class TestClaudeMCPIntegration:
             mock_response = MagicMock()
             mock_text_block = MagicMock()
             mock_text_block.text = "Hello there!"
+            mock_text_block.type = "text"
             mock_response.content = [mock_text_block]
             mock_anthropic_client.messages.create.return_value = mock_response
             
@@ -109,25 +111,27 @@ class TestClaudeMCPIntegration:
         # Mock MCP service
         with patch('app.services.claude.mcp_service') as mock_mcp:
             mock_mcp.get_tools.return_value = mock_mcp_tools
-            mock_mcp.call_tool.return_value = "Weather in New York: Sunny, 72°F"
+            mock_mcp.call_tool = AsyncMock(return_value="Weather in New York: Sunny, 72°F")
             
             # Mock Claude response with tool use
-            tool_use = MagicMock()
+            tool_use = MagicMock(spec=['type', 'id', 'name', 'input'])
             tool_use.type = "tool_use"
             tool_use.id = "tool_123"
             tool_use.name = "get_weather"
             tool_use.input = {"location": "New York"}
             
-            # First response uses tool
+            # First response uses tool - use spec to avoid magic method issues
             mock_response1 = MagicMock()
-            mock_text_block1 = MagicMock()
+            mock_text_block1 = MagicMock(spec=['text', 'type'])
             mock_text_block1.text = "I'll check the weather for you. "
+            mock_text_block1.type = "text"
             mock_response1.content = [mock_text_block1, tool_use]
             
             # Second response after tool execution
             mock_response2 = MagicMock()
-            mock_text_block2 = MagicMock()
+            mock_text_block2 = MagicMock(spec=['text', 'type'])
             mock_text_block2.text = "The weather in New York is sunny and 72°F."
+            mock_text_block2.type = "text"
             mock_response2.content = [mock_text_block2]
             
             mock_anthropic_client.messages.create.side_effect = [mock_response1, mock_response2]
@@ -135,9 +139,8 @@ class TestClaudeMCPIntegration:
             # Test completion
             result = await service.get_completion("What's the weather in New York?")
             
-            # Verify
-            assert "I'll check the weather for you." in result
-            assert "The weather in New York is sunny and 72°F." in result
+            # Verify - The result should contain both the initial response and the continuation
+            assert result == "I'll check the weather for you. The weather in New York is sunny and 72°F."
             mock_mcp.call_tool.assert_called_once_with("get_weather", {"location": "New York"})
             assert mock_anthropic_client.messages.create.call_count == 2
     
@@ -154,7 +157,7 @@ class TestClaudeMCPIntegration:
             mock_mcp.call_tool.side_effect = Exception("Tool execution failed")
             
             # Mock Claude response with tool use
-            tool_use = MagicMock()
+            tool_use = MagicMock(spec=['type', 'id', 'name', 'input'])
             tool_use.type = "tool_use"
             tool_use.id = "tool_123"
             tool_use.name = "get_weather"
@@ -168,6 +171,7 @@ class TestClaudeMCPIntegration:
             mock_response2 = MagicMock()
             mock_text_block = MagicMock()
             mock_text_block.text = "I encountered an error checking the weather."
+            mock_text_block.type = "text"
             mock_response2.content = [mock_text_block]
             
             mock_anthropic_client.messages.create.side_effect = [mock_response1, mock_response2]
@@ -192,23 +196,26 @@ class TestClaudeMCPIntegration:
             
             # Mock streaming response
             mock_stream = AsyncMock()
+            mock_stream.__aenter__ = AsyncMock(return_value=mock_stream)
+            mock_stream.__aexit__ = AsyncMock(return_value=None)
+            
             mock_events = [
                 MagicMock(type="content_block_delta", delta=MagicMock(text="Hello ")),
                 MagicMock(type="content_block_delta", delta=MagicMock(text="there!"))
             ]
             
-            async def async_generator():
+            # Create async iterator that yields events
+            async def event_iterator():
                 for event in mock_events:
                     yield event
             
-            mock_stream.__aiter__.return_value = async_generator()
-            mock_stream.get_final_message.return_value = MagicMock(content=[])
+            # Make the mock stream async iterable
+            mock_stream.__aiter__ = lambda self: event_iterator()
+            mock_stream.get_final_message = AsyncMock(return_value=MagicMock(content=[]))
             
-            # Create a proper async context manager mock
-            async_cm = AsyncMock()
-            async_cm.__aenter__.return_value = mock_stream
-            async_cm.__aexit__.return_value = None
-            mock_anthropic_client.messages.stream.return_value = async_cm
+            # Mock the stream method to return the async context manager
+            # The stream method itself should be a regular method that returns the context manager
+            mock_anthropic_client.messages.stream = MagicMock(return_value=mock_stream)
             
             # Test streaming
             chunks = []
@@ -234,57 +241,73 @@ class TestClaudeMCPIntegration:
         # Mock MCP service
         with patch('app.services.claude.mcp_service') as mock_mcp:
             mock_mcp.get_tools.return_value = mock_mcp_tools
-            mock_mcp.call_tool.return_value = "Result: 10"
+            mock_mcp.call_tool = AsyncMock(return_value="Result: 10")
             
             # Mock first stream with tool use
             mock_stream1 = AsyncMock()
-            tool_block = MagicMock(
-                id="tool_123",
-                name="calculate",
-                type="tool_use"
-            )
+            mock_stream1.__aenter__ = AsyncMock(return_value=mock_stream1)
+            mock_stream1.__aexit__ = AsyncMock(return_value=None)
             
-            mock_events1 = [
-                MagicMock(type="content_block_delta", delta=MagicMock(text="Let me calculate that. ")),
-                MagicMock(type="content_block_start", content_block=tool_block),
-                MagicMock(type="content_block_delta", delta=MagicMock(partial_json='{"expression": "5 + 5"}'))
-            ]
+            tool_block = MagicMock(spec=['id', 'name', 'type'])
+            tool_block.id = "tool_123"
+            tool_block.name = "calculate"
+            tool_block.type = "tool_use"
             
-            async def async_generator1():
+            # Create events with proper specs
+            event1 = MagicMock(spec=['type', 'delta'])
+            event1.type = "content_block_delta"
+            delta1 = MagicMock(spec=['text'])
+            delta1.text = "Let me calculate that. "
+            event1.delta = delta1
+            
+            event2 = MagicMock(spec=['type', 'content_block'])
+            event2.type = "content_block_start"
+            event2.content_block = tool_block
+            
+            event3 = MagicMock(spec=['type', 'delta'])
+            event3.type = "content_block_delta"
+            delta3 = MagicMock(spec=['partial_json'])
+            delta3.partial_json = '{"expression": "5 + 5"}'
+            event3.delta = delta3
+            
+            mock_events1 = [event1, event2, event3]
+            
+            # Create async iterator for first stream
+            async def event_iterator1():
                 for event in mock_events1:
                     yield event
             
-            mock_stream1.__aiter__.return_value = async_generator1()
-            mock_text_block = MagicMock()
+            mock_stream1.__aiter__ = lambda self: event_iterator1()
+            mock_text_block = MagicMock(spec=['text', 'type'])
             mock_text_block.text = "Let me calculate that. "
-            mock_stream1.get_final_message.return_value = MagicMock(
+            mock_stream1.get_final_message = AsyncMock(return_value=MagicMock(
                 content=[mock_text_block, tool_block]
-            )
+            ))
             
             # Mock second stream after tool execution
             mock_stream2 = AsyncMock()
-            mock_events2 = [
-                MagicMock(type="content_block_delta", delta=MagicMock(text="The answer is 10."))
-            ]
+            mock_stream2.__aenter__ = AsyncMock(return_value=mock_stream2)
+            mock_stream2.__aexit__ = AsyncMock(return_value=None)
             
-            async def async_generator2():
+            # Create event for second stream with proper spec
+            event4 = MagicMock(spec=['type', 'delta'])
+            event4.type = "content_block_delta"
+            delta4 = MagicMock(spec=['text'])
+            delta4.text = "The answer is 10."
+            event4.delta = delta4
+            
+            mock_events2 = [event4]
+            
+            # Create async iterator for second stream
+            async def event_iterator2():
                 for event in mock_events2:
                     yield event
             
-            mock_stream2.__aiter__.return_value = async_generator2()
-            mock_stream2.get_final_message.return_value = MagicMock(content=[])
-            
-            # Create proper async context managers
-            async_cm1 = AsyncMock()
-            async_cm1.__aenter__.return_value = mock_stream1
-            async_cm1.__aexit__.return_value = None
-            
-            async_cm2 = AsyncMock()
-            async_cm2.__aenter__.return_value = mock_stream2
-            async_cm2.__aexit__.return_value = None
+            mock_stream2.__aiter__ = lambda self: event_iterator2()
+            mock_stream2.get_final_message = AsyncMock(return_value=MagicMock(content=[]))
             
             # Set up the mock to return different streams
-            mock_anthropic_client.messages.stream.side_effect = [async_cm1, async_cm2]
+            mock_anthropic_client.messages.stream = MagicMock(side_effect=[mock_stream1, mock_stream2])
             
             # Test streaming
             chunks = []
@@ -292,8 +315,9 @@ class TestClaudeMCPIntegration:
                 chunks.append(chunk)
             
             # Verify
-            assert "Let me calculate that. " in "".join(chunks)
-            assert "The answer is 10." in "".join(chunks)
+            all_text = "".join(chunks)
+            assert "Let me calculate that. " in all_text
+            assert "The answer is 10." in all_text
             mock_mcp.call_tool.assert_called_once_with("calculate", {"expression": "5 + 5"})
     
     @pytest.mark.asyncio
@@ -311,6 +335,7 @@ class TestClaudeMCPIntegration:
             mock_response = MagicMock()
             mock_text_block = MagicMock()
             mock_text_block.text = "Based on our previous discussion..."
+            mock_text_block.type = "text"
             mock_response.content = [mock_text_block]
             mock_anthropic_client.messages.create.return_value = mock_response
             

@@ -163,6 +163,10 @@ class ClaudeService:
                     if event.type == "content_block_delta":
                         if hasattr(event.delta, 'text'):
                             yield event.delta.text
+                        elif hasattr(event.delta, 'partial_json'):
+                            # Accumulate tool input
+                            if tool_use_blocks:
+                                tool_use_blocks[-1]["input"] += event.delta.partial_json
                     elif event.type == "content_block_start" and hasattr(event.content_block, 'type') and event.content_block.type == "tool_use":
                         # Start collecting tool use data
                         tool_use_blocks.append({
@@ -170,10 +174,6 @@ class ClaudeService:
                             "name": event.content_block.name,
                             "input": ""
                         })
-                    elif event.type == "content_block_delta" and hasattr(event.delta, 'partial_json'):
-                        # Accumulate tool input
-                        if tool_use_blocks:
-                            tool_use_blocks[-1]["input"] += event.delta.partial_json
                 
                 # After streaming completes, handle any tool uses
                 if tool_use_blocks:
