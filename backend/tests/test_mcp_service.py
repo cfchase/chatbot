@@ -26,27 +26,25 @@ def mock_config():
 @pytest.fixture
 def mock_tools():
     """Mock tools returned by FastMCP"""
-    tools = [
-        MagicMock(
-            name="get_weather",
-            description="Get weather for a location",
-            inputSchema={
-                "type": "object",
-                "properties": {"location": {"type": "string"}},
-                "required": ["location"]
-            }
-        ),
-        MagicMock(
-            name="calculate",
-            description="Perform calculations",
-            inputSchema={
-                "type": "object",
-                "properties": {"expression": {"type": "string"}},
-                "required": ["expression"]
-            }
-        )
-    ]
-    return tools
+    tool1 = MagicMock()
+    tool1.name = "get_weather"
+    tool1.description = "Get weather for a location"
+    tool1.inputSchema = {
+        "type": "object",
+        "properties": {"location": {"type": "string"}},
+        "required": ["location"]
+    }
+    
+    tool2 = MagicMock()
+    tool2.name = "calculate"
+    tool2.description = "Perform calculations"
+    tool2.inputSchema = {
+        "type": "object",
+        "properties": {"expression": {"type": "string"}},
+        "required": ["expression"]
+    }
+    
+    return [tool1, tool2]
 
 
 @pytest.fixture
@@ -218,8 +216,8 @@ class TestMCPService:
             # Initialize service
             await clean_mcp_service.initialize()
             
-            # Call tool
-            result = await clean_mcp_service.call_tool("get_data", {})
+            # Call tool - use existing tool name
+            result = await clean_mcp_service.call_tool("get_weather", {"location": "NYC"})
             
             assert result == str(mock_result)
     
@@ -247,8 +245,8 @@ class TestMCPService:
             # Initialize service
             await clean_mcp_service.initialize()
             
-            # Call tool
-            result = await clean_mcp_service.call_tool("empty_tool", {})
+            # Call tool - use existing tool name
+            result = await clean_mcp_service.call_tool("calculate", {"expression": "1+1"})
             
             assert result == "Tool executed successfully with no output"
     
@@ -276,9 +274,9 @@ class TestMCPService:
             # Initialize service
             await clean_mcp_service.initialize()
             
-            # Call tool and expect exception
+            # Call tool and expect exception - use an existing tool name
             with pytest.raises(Exception, match="Failed to execute tool"):
-                await clean_mcp_service.call_tool("failing_tool", {})
+                await clean_mcp_service.call_tool("get_weather", {"location": "NYC"})
     
     @pytest.mark.asyncio
     async def test_call_tool_not_initialized(self, clean_mcp_service):
@@ -385,3 +383,110 @@ class TestMCPService:
             assert tools[0]["name"] == "complex_tool"
             assert tools[0]["description"] == "MCP tool: complex_tool"  # Default description
             assert tools[0]["input_schema"] == mock_tool.inputSchema
+    
+    @pytest.mark.asyncio
+    async def test_security_validation_tool_name(self, clean_mcp_service):
+        """Test security validation for tool names"""
+        # Test empty name
+        with pytest.raises(ValueError, match="Tool name cannot be empty"):
+            clean_mcp_service._validate_tool_name("")
+        
+        # Test long name
+        with pytest.raises(ValueError, match="exceeds maximum length"):
+            clean_mcp_service._validate_tool_name("a" * 101)
+        
+        # Test invalid characters
+        with pytest.raises(ValueError, match="invalid characters"):
+            clean_mcp_service._validate_tool_name("tool$name")
+        
+        # Test valid names
+        clean_mcp_service._validate_tool_name("valid_tool")
+        clean_mcp_service._validate_tool_name("tool-name")
+        clean_mcp_service._validate_tool_name("tool.name")
+        clean_mcp_service._validate_tool_name("Tool123")
+    
+    @pytest.mark.asyncio
+    async def test_security_sanitize_arguments(self, clean_mcp_service):
+        """Test argument sanitization"""
+        # Test non-dict input
+        with pytest.raises(TypeError, match="Arguments must be a dictionary"):
+            clean_mcp_service._sanitize_arguments("not a dict")
+        
+        # Test invalid key type
+        with pytest.raises(TypeError, match="Argument key must be string"):
+            clean_mcp_service._sanitize_arguments({123: "value"})
+        
+        # Test long key
+        with pytest.raises(ValueError, match="exceeds maximum length"):
+            clean_mcp_service._sanitize_arguments({"a" * 101: "value"})
+        
+        # Test invalid key characters
+        with pytest.raises(ValueError, match="contains invalid characters"):
+            clean_mcp_service._sanitize_arguments({"key$name": "value"})
+        
+        # Test string truncation
+        long_string = "x" * 20000
+        result = clean_mcp_service._sanitize_arguments({"key": long_string})
+        assert len(result["key"]) == 10000
+        
+        # Test control character removal
+        result = clean_mcp_service._sanitize_arguments({"key": "hello\x00world\x1Ftest"})
+        assert result["key"] == "helloworldtest"
+        
+        # Test valid arguments
+        args = {
+            "name": "John",
+            "age": 30,
+            "tags": ["python", "fastapi"],
+            "meta": {"version": "1.0"}
+        }
+        result = clean_mcp_service._sanitize_arguments(args)
+        assert result == args
+    
+    @pytest.mark.asyncio
+    async def test_call_tool_invalid_name(self, mock_config, mock_tools, clean_mcp_service):
+        """Test calling tool with invalid name"""
+        with patch('pathlib.Path.exists', return_value=True), \
+             patch('builtins.open', mock_open(read_data=json.dumps(mock_config))), \
+             patch('app.services.mcp_service.Client') as mock_client_class:
+            
+            # Setup mock client
+            mock_client = AsyncMock()
+            mock_client.__aenter__.return_value = mock_client
+            mock_client.__aexit__.return_value = None
+            mock_client.list_tools.return_value = mock_tools
+            mock_client_class.return_value = mock_client
+            
+            # Load config and client with mocks in place
+            clean_mcp_service._load_config_and_client()
+            
+            # Initialize service
+            await clean_mcp_service.initialize()
+            
+            # Test invalid tool name
+            with pytest.raises(ValueError, match="Invalid input"):
+                await clean_mcp_service.call_tool("tool$name", {})
+    
+    @pytest.mark.asyncio
+    async def test_call_tool_not_found(self, mock_config, mock_tools, clean_mcp_service):
+        """Test calling non-existent tool"""
+        with patch('pathlib.Path.exists', return_value=True), \
+             patch('builtins.open', mock_open(read_data=json.dumps(mock_config))), \
+             patch('app.services.mcp_service.Client') as mock_client_class:
+            
+            # Setup mock client
+            mock_client = AsyncMock()
+            mock_client.__aenter__.return_value = mock_client
+            mock_client.__aexit__.return_value = None
+            mock_client.list_tools.return_value = mock_tools
+            mock_client_class.return_value = mock_client
+            
+            # Load config and client with mocks in place
+            clean_mcp_service._load_config_and_client()
+            
+            # Initialize service
+            await clean_mcp_service.initialize()
+            
+            # Test non-existent tool
+            with pytest.raises(ValueError, match="Tool 'non_existent' not found"):
+                await clean_mcp_service.call_tool("non_existent", {})
