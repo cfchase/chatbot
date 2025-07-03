@@ -1,10 +1,19 @@
 import json
 import logging
 import re
+import asyncio
 from typing import Any, Dict, List, Optional
 from pathlib import Path
 from fastmcp import Client
 from app.config import settings
+from app.services.mcp_exceptions import (
+    MCPConfigError,
+    MCPConnectionError,
+    MCPToolNotFoundError,
+    MCPToolExecutionError,
+    MCPValidationError,
+    MCPTimeoutError
+)
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +22,11 @@ MAX_TOOL_NAME_LENGTH = 100
 MAX_ARG_KEY_LENGTH = 100
 MAX_STRING_ARG_LENGTH = 10000
 VALID_TOOL_NAME_PATTERN = re.compile(r'^[a-zA-Z0-9_\-\.]+$')
+
+# Retry constants
+MAX_RETRIES = 3
+RETRY_DELAY_SECONDS = 1.0
+TOOL_TIMEOUT_SECONDS = 30.0
 
 
 class MCPService:
@@ -49,6 +63,9 @@ class MCPService:
             self.client = Client(self._config)
             logger.info(f"MCP client created with config from {config_path}")
             
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in MCP config: {str(e)}")
+            raise MCPConfigError(f"Invalid JSON in config file: {str(e)}")
         except Exception as e:
             logger.error(f"Failed to load MCP config or create client: {str(e)}")
             self._config = None
@@ -83,9 +100,15 @@ class MCPService:
                 
                 logger.info(f"MCP initialized with {len(self.tools)} tools from {len(self._config.get('mcpServers', {}))} servers")
                 
+        except asyncio.TimeoutError:
+            logger.error("Timeout connecting to MCP servers")
+            raise MCPConnectionError("Timeout connecting to MCP servers")
         except Exception as e:
             logger.error(f"Failed to initialize MCP tools: {str(e)}")
             self.tools = []
+            # Only re-raise connection errors, handle other errors gracefully
+            if "connection" in str(e).lower():
+                raise MCPConnectionError(f"Connection error: {str(e)}")
     
     async def shutdown(self) -> None:
         """Shutdown the MCP service and close connections"""
@@ -108,30 +131,30 @@ class MCPService:
     def _validate_tool_name(self, name: str) -> None:
         """Validate tool name for security"""
         if not name:
-            raise ValueError("Tool name cannot be empty")
+            raise MCPValidationError("Tool name cannot be empty")
         
         if len(name) > MAX_TOOL_NAME_LENGTH:
-            raise ValueError(f"Tool name exceeds maximum length of {MAX_TOOL_NAME_LENGTH}")
+            raise MCPValidationError(f"Tool name exceeds maximum length of {MAX_TOOL_NAME_LENGTH}")
         
         if not VALID_TOOL_NAME_PATTERN.match(name):
-            raise ValueError("Tool name contains invalid characters. Only alphanumeric, underscore, hyphen, and dot are allowed")
+            raise MCPValidationError("Tool name contains invalid characters. Only alphanumeric, underscore, hyphen, and dot are allowed")
     
     def _sanitize_arguments(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Sanitize and validate tool arguments"""
         if not isinstance(arguments, dict):
-            raise TypeError("Arguments must be a dictionary")
+            raise MCPValidationError("Arguments must be a dictionary")
         
         sanitized = {}
         for key, value in arguments.items():
             # Validate key
             if not isinstance(key, str):
-                raise TypeError(f"Argument key must be string, got {type(key)}")
+                raise MCPValidationError(f"Argument key must be string, got {type(key)}")
             
             if len(key) > MAX_ARG_KEY_LENGTH:
-                raise ValueError(f"Argument key '{key}' exceeds maximum length of {MAX_ARG_KEY_LENGTH}")
+                raise MCPValidationError(f"Argument key '{key}' exceeds maximum length of {MAX_ARG_KEY_LENGTH}")
             
             if not key.replace('_', '').replace('-', '').replace('.', '').isalnum():
-                raise ValueError(f"Argument key '{key}' contains invalid characters")
+                raise MCPValidationError(f"Argument key '{key}' contains invalid characters")
             
             # Sanitize value
             if isinstance(value, str):
@@ -145,7 +168,7 @@ class MCPService:
                 try:
                     json.dumps(value)  # Ensure it's JSON serializable
                 except (TypeError, ValueError) as e:
-                    raise ValueError(f"Argument '{key}' contains non-serializable data: {str(e)}")
+                    raise MCPValidationError(f"Argument '{key}' contains non-serializable data: {str(e)}")
             
             sanitized[key] = value
         
@@ -156,34 +179,60 @@ class MCPService:
         return self.tools
     
     async def call_tool(self, name: str, arguments: Dict[str, Any]) -> Any:
-        """Execute a tool and return the result"""
+        """Execute a tool and return the result with retry logic"""
         if not self.client:
-            raise Exception("MCP service not initialized or no servers configured")
+            raise MCPConnectionError("MCP service not initialized or no servers configured")
         
         # Validate and sanitize inputs
-        try:
-            self._validate_tool_name(name)
-            sanitized_args = self._sanitize_arguments(arguments)
-        except (ValueError, TypeError) as e:
-            logger.error(f"Invalid input for tool {name}: {str(e)}")
-            raise ValueError(f"Invalid input: {str(e)}")
+        self._validate_tool_name(name)
+        sanitized_args = self._sanitize_arguments(arguments)
         
         # Check if tool exists
         tool_names = [tool['name'] for tool in self.tools]
         if name not in tool_names:
-            logger.error(f"Tool '{name}' not found. Available tools: {tool_names}")
-            raise ValueError(f"Tool '{name}' not found")
+            raise MCPToolNotFoundError(name, tool_names)
         
-        try:
-            async with self.client:
-                result = await self.client.call_tool(name, sanitized_args)
-                # FastMCP returns a list of results, we typically want the first one
-                if result and len(result) > 0:
-                    return result[0].text if hasattr(result[0], 'text') else str(result[0])
-                return "Tool executed successfully with no output"
-        except Exception as e:
-            logger.error(f"Error calling MCP tool {name}: {str(e)}")
-            raise Exception(f"Failed to execute tool {name}: {str(e)}")
+        # Retry logic for transient failures
+        last_error = None
+        for attempt in range(MAX_RETRIES):
+            try:
+                async with self.client:
+                    # Execute with timeout
+                    result = await asyncio.wait_for(
+                        self.client.call_tool(name, sanitized_args),
+                        timeout=TOOL_TIMEOUT_SECONDS
+                    )
+                    
+                    # FastMCP returns a list of results, we typically want the first one
+                    if result and len(result) > 0:
+                        return result[0].text if hasattr(result[0], 'text') else str(result[0])
+                    return "Tool executed successfully with no output"
+                    
+            except asyncio.TimeoutError:
+                raise MCPTimeoutError(name, TOOL_TIMEOUT_SECONDS)
+                
+            except Exception as e:
+                last_error = e
+                logger.warning(f"Tool {name} failed on attempt {attempt + 1}/{MAX_RETRIES}: {str(e)}")
+                
+                # Don't retry on certain errors
+                if isinstance(e, (MCPValidationError, MCPToolNotFoundError)):
+                    raise
+                    
+                # Check if it's a connection error
+                if "connection" in str(e).lower() or "network" in str(e).lower():
+                    if attempt < MAX_RETRIES - 1:
+                        await asyncio.sleep(RETRY_DELAY_SECONDS * (attempt + 1))
+                        continue
+                    raise MCPConnectionError(f"Connection error after {MAX_RETRIES} attempts: {str(e)}")
+                
+                # For other errors, retry with delay
+                if attempt < MAX_RETRIES - 1:
+                    await asyncio.sleep(RETRY_DELAY_SECONDS)
+                    continue
+                    
+        # All retries exhausted
+        raise MCPToolExecutionError(name, last_error or Exception("Unknown error"))
     
     @property
     def is_available(self) -> bool:
