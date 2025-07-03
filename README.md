@@ -1,26 +1,63 @@
 # Chatbot
 
-A full-stack chatbot application with React frontend (Vite) using PatternFly and FastAPI backend, ready for deployment to OpenShift.
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
+[![Node.js](https://img.shields.io/badge/node.js-22%2B-green.svg)](https://nodejs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104%2B-009688.svg)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/React-18%2B-61DAFB.svg)](https://reactjs.org/)
+
+A full-stack AI chatbot application with React frontend (Vite) using PatternFly and FastAPI backend, featuring Claude AI integration with MCP (Model Context Protocol) support. Ready for deployment to OpenShift.
+
+![UI Screenshot](docs/ui.png)
+
+## Table of Contents
+
+- [Features](#features)
+- [Architecture](#architecture)
+- [Quick Start](#quick-start)
+- [Project Structure](#project-structure)
+- [Configuration](#configuration)
+- [API Endpoints](#api-endpoints)
+- [MCP Integration](#mcp-integration)
+- [Deployment](#deployment)
+- [Development](#development)
+- [Testing](#testing)
+- [Troubleshooting](#troubleshooting)
+- [License](#license)
+
+## Features
+
+- 🤖 **Claude AI Integration**: Powered by Anthropic's Claude with configurable models
+- 🔧 **MCP Support**: Extend Claude with custom tools via Model Context Protocol
+- 🎨 **Modern UI**: React with TypeScript, Vite, and PatternFly components
+- 🌙 **Dark Mode**: Built-in theme toggle with dark mode as default
+- 🚀 **Production Ready**: Containerized with Docker and OpenShift deployment
+- 📦 **Fast Dependencies**: Backend uses UV for lightning-fast Python package management
+- 🔒 **Security**: OpenShift Security Context Constraints (SCC) compatible
+- 📊 **Monitoring**: Health checks and resource monitoring
+- 🎯 **Environment-Specific**: Dev/prod configurations with Kustomize
 
 ## Architecture
 
-- **Frontend**: React with TypeScript and Vite - simple UI with health check button
-- **Backend**: FastAPI with Python - minimal API with health check endpoint
-- **AI Integration**: Claude API with MCP (Model Context Protocol) support
-- **Containerization**: Docker and Docker Compose
-- **Deployment**: OpenShift with Kustomize
-- **Container Registry**: Quay.io
+- **Frontend**: React with TypeScript and Vite - Modern chat interface with PatternFly
+- **Backend**: FastAPI with Python - AI chat API with Claude integration
+- **AI Integration**: Claude API with MCP (Model Context Protocol) support for custom tools
+- **Package Management**: UV for Python (fast), npm for Node.js
+- **Containerization**: Docker multi-stage builds for optimal size
+- **Deployment**: OpenShift with Kustomize for environment-specific configurations
+- **Container Registry**: Quay.io for image storage
 - **API Routing**: Vite proxy for local development, Nginx proxy for production
 
 ## Quick Start
 
 ### Prerequisites
 
-- Node.js 22+
-- Python 3.11+
-- Docker
-- OpenShift CLI (`oc`)
-- Kustomize
+- **Node.js** 22+ ([Download](https://nodejs.org/))
+- **Python** 3.11+ ([Download](https://www.python.org/downloads/))
+- **UV** Python package manager ([Install](https://docs.astral.sh/uv/))
+- **Docker** ([Install](https://docs.docker.com/get-docker/))
+- **OpenShift CLI** (`oc`) for deployment ([Install](https://docs.openshift.com/container-platform/4.14/cli_reference/openshift_cli/getting-started-cli.html))
+- **Kustomize** for Kubernetes manifests ([Install](https://kubectl.docs.kubernetes.io/installation/kustomize/))
 
 ### Local Development
 
@@ -28,11 +65,19 @@ A full-stack chatbot application with React frontend (Vite) using PatternFly and
    ```bash
    git clone https://github.com/cfchase/chatbot
    cd chatbot
+   
+   # Setup all dependencies and environment files
    make setup
-   # or alternatively: npm run setup
+   make env-setup
    ```
 
-2. **Run locally**:
+2. **Configure API keys**:
+   ```bash
+   # Edit backend/.env with your Anthropic API key
+   vim backend/.env
+   ```
+
+3. **Run locally**:
    ```bash
    # Run both frontend and backend
    make dev
@@ -40,182 +85,116 @@ A full-stack chatbot application with React frontend (Vite) using PatternFly and
    # Or run separately
    make dev-backend   # Backend on http://localhost:8000
    make dev-frontend  # Frontend on http://localhost:8080
-   
-   # Alternative npm commands
-   npm run dev        # Run both
-   npm run dev:backend npm run dev:frontend
    ```
 
-### Building
-
-```bash
-# Build frontend and container images
-make build
-```
+4. **Access the application**:
+   - Frontend: http://localhost:8080
+   - Backend API: http://localhost:8000
+   - Health check: http://localhost:8000/api/health
 
 ## Project Structure
 
 ```
-├── backend/              # FastAPI backend
-│   ├── main.py          # FastAPI application
-│   ├── requirements.txt # Python dependencies
-│   ├── Dockerfile       # Backend container
-│   └── .env.example     # Environment variables
-├── frontend/            # React frontend
-│   ├── src/             # Source code
-│   ├── package.json     # Node dependencies
-│   ├── Dockerfile       # Frontend container
-│   ├── nginx.conf       # Nginx configuration
-│   └── .env.example     # Environment variables
-├── k8s/                 # Kubernetes/OpenShift manifests
-│   ├── base/           # Base kustomize resources
-│   └── overlays/       # Environment-specific configs
-│       ├── dev/        # Development environment
-│       └── prod/       # Production environment
-├── scripts/            # Deployment scripts
-│   ├── build-and-push.sh
-│   └── deploy.sh
-└── docker-compose.yml  # Local development with Docker
+├── backend/                    # FastAPI backend
+│   ├── app/                   # Application code
+│   │   ├── api/              # API routes
+│   │   ├── models/           # Data models
+│   │   └── services/         # Business logic (Claude, MCP)
+│   ├── docs/                 # Backend documentation
+│   ├── tests/                # Test files
+│   ├── main.py               # FastAPI application entry point
+│   ├── pyproject.toml        # Python dependencies (UV)
+│   ├── uv.lock              # Locked dependency versions
+│   ├── mcp-config.example.json # MCP server configuration example
+│   └── Dockerfile           # Backend container
+├── frontend/                 # React frontend
+│   ├── src/                 # Source code
+│   │   ├── app/            # React components
+│   │   │   ├── Chat/       # Chat interface
+│   │   │   ├── Settings/   # Settings pages
+│   │   │   └── contexts/   # React contexts (Theme)
+│   │   └── favicon.png     # Custom AI logo favicon
+│   ├── package.json        # Node.js dependencies
+│   ├── vite.config.ts     # Vite configuration
+│   ├── nginx.conf         # Production Nginx config
+│   └── Dockerfile         # Frontend container
+├── k8s/                    # Kubernetes/OpenShift manifests
+│   ├── base/              # Base kustomize resources
+│   └── overlays/          # Environment-specific configs
+│       ├── dev/          # Development environment
+│       └── prod/         # Production environment
+├── scripts/               # Deployment automation
+├── docs/                  # Documentation and screenshots
+├── Makefile              # Development commands
+└── package.json          # Root npm scripts
 ```
-
-## Deployment
-
-### Container Images
-
-Build and push to quay.io:
-
-```bash
-# Build frontend and container images (default tag: latest)
-make build
-
-# Build for production environment (uses prod tag)
-make build-prod
-
-# Build with specific tag and registry
-make build TAG=v1.0.0 REGISTRY=quay.io/cfchase
-
-# Push images (must build first, default tag: latest)
-make push
-
-# Build and push for development deployment (default)
-make build
-make push
-
-# Build and push for production deployment
-make build-prod
-make push-prod
-
-# Alternative script usage (defaults to latest tag)
-./scripts/build-images.sh
-./scripts/push-images.sh
-
-# Or with specific tag
-./scripts/build-images.sh prod quay.io/cfchase
-./scripts/push-images.sh prod quay.io/cfchase
-```
-
-**Important**: The k8s overlays expect specific image tags:
-- Development: `latest` tag (default)
-- Production: `prod` tag
-
-Make sure to build and push with the correct tag before deploying.
-
-### OpenShift Deployment
-
-1. **Login to OpenShift**:
-   ```bash
-   oc login --server=https://your-openshift-cluster
-   ```
-
-2. **Build and Push Images**:
-   ```bash
-   # For development (uses latest tag by default)
-   make build
-   make push
-   
-   # For production
-   make build-prod
-   make push-prod
-   ```
-
-3. **Deploy to development**:
-   ```bash
-   make deploy-dev
-   # or: ./scripts/deploy.sh dev
-   ```
-
-4. **Deploy to production**:
-   ```bash
-   make deploy-prod
-   # or: ./scripts/deploy.sh prod
-   ```
-
-5. **Preview deployments**:
-   ```bash
-   make kustomize       # Preview dev manifests
-   make kustomize-prod  # Preview prod manifests
-   ```
-
-6. **Remove deployments**:
-   ```bash
-   make undeploy        # Remove development deployment
-   make undeploy-prod   # Remove production deployment
-   ```
 
 ## Configuration
 
+### Environment Setup
+
+Use the provided make targets to set up your environment:
+
+```bash
+# Copy example files for local development
+make env-setup
+
+# Copy example files for Kubernetes deployment
+make env-setup-k8s
+```
+
 ### Backend Configuration
 
-Copy `backend/.env.example` to `backend/.env` and configure:
+Edit `backend/.env` (created from `.env.example`):
 
 ```env
-PORT=8000
-ENVIRONMENT=development
-ANTHROPIC_API_KEY=your-anthropic-api-key
+# Anthropic API Configuration
+ANTHROPIC_API_KEY=sk-ant-api03-your-anthropic-api-key-here
 ANTHROPIC_MODEL=claude-sonnet-4-20250514
 ```
 
-### MCP Configuration (Optional)
-
-To extend Claude with custom tools via MCP servers, create `backend/mcp-config.json`:
-
-```json
-{
-  "mcpServers": {
-    "example-server": {
-      "transport": "stdio",
-      "command": "python",
-      "args": ["path/to/your/mcp_server.py"]
-    }
-  }
-}
-```
-
-See [MCP Setup Guide](backend/MCP_README.md) for detailed instructions.
-
 ### Frontend Configuration
 
-Copy `frontend/.env.example` to `frontend/.env` and configure:
+Edit `frontend/.env` (created from `.env.example`):
 
 ```env
 VITE_API_URL=http://localhost:8000
 ```
 
+### MCP Configuration (Optional)
+
+Create `backend/mcp-config.json` to add custom tools:
+
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed/files"]
+    },
+    "calculator": {
+      "command": "python",
+      "args": ["path/to/your/calculator_server.py"]
+    }
+  }
+}
+```
+
 ## API Endpoints
 
-The backend provides the following endpoints:
+The backend provides the following REST API endpoints:
 
-- `GET /` - Root endpoint
-- `GET /api/health` - Health check endpoint
-- `POST /api/chat` - Chat with Claude (with MCP tool support)
-- `GET /api/mcp/tools` - List available MCP tools
+- `GET /` - Root endpoint with API information
+- `GET /api/v1/utils/health-check` - Health check endpoint
+- `POST /api/v1/chat/` - Chat with Claude (supports MCP tools)
+- `GET /api/v1/chat/mcp/tools` - List available MCP tools
 
 ## MCP Integration
 
 This chatbot includes MCP (Model Context Protocol) support, allowing you to extend Claude's capabilities with custom tools from MCP servers. MCP enables:
 
 - **Custom Tools**: Add domain-specific tools that Claude can use
-- **External Integrations**: Connect to databases, APIs, or local services
+- **External Integrations**: Connect to databases, APIs, or local services  
 - **Flexible Transports**: Support for stdio, HTTP, and WebSocket connections
 
 ### Documentation
@@ -244,20 +223,157 @@ if __name__ == "__main__":
 
 Add to `backend/mcp-config.json` and Claude will have access to your custom tools!
 
-## Customization
+## Deployment
 
-### Update Container Registry
+### Container Images
 
-1. Update image references in `k8s/base/kustomization.yaml`
-2. Update registry in `scripts/build-and-push.sh`
-3. Update image references in overlay files
+Build and push images to your registry:
 
-### Add Environment Variables
+```bash
+# Build and push for development (uses latest tag)
+make build && make push
 
-1. Add to `.env.example` files
-2. Update deployment manifests in `k8s/base/`
-3. Update Docker configurations
+# Build and push for production (uses prod tag)
+make build-prod && make push-prod
+
+# Explicit development commands
+make build-dev && make push-dev
+
+# Custom registry and tag
+make build TAG=v1.0.0 REGISTRY=quay.io/yourorg
+make push TAG=v1.0.0 REGISTRY=quay.io/yourorg
+```
+
+### OpenShift Deployment
+
+1. **Setup configuration**:
+   ```bash
+   # Copy and edit Kubernetes environment files
+   make env-setup-k8s
+   
+   # Edit k8s/overlays/dev/.env and k8s/overlays/prod/.env
+   # Add your Anthropic API key
+   ```
+
+2. **Login to OpenShift**:
+   ```bash
+   oc login --server=https://your-openshift-cluster
+   ```
+
+3. **Deploy to development**:
+   ```bash
+   # Build, push, and deploy
+   make build && make push && make deploy
+   
+   # Or use explicit development commands
+   make build-dev && make push-dev && make deploy-dev
+   ```
+
+4. **Deploy to production**:
+   ```bash
+   # Build, push, and deploy production
+   make build-prod && make push-prod && make deploy-prod
+   ```
+
+5. **Manage deployments**:
+   ```bash
+   make kustomize       # Preview dev manifests
+   make kustomize-prod  # Preview prod manifests
+   make undeploy        # Remove dev deployment
+   make undeploy-prod   # Remove prod deployment
+   ```
+
+## Development
+
+### Available Commands
+
+```bash
+# Setup
+make setup           # Install all dependencies
+make env-setup       # Setup environment files
+make fresh-start     # Clean setup for new development
+
+# Development
+make dev             # Run both frontend and backend
+make dev-frontend    # Run frontend only (port 8080)
+make dev-backend     # Run backend only (port 8000)
+
+# Building
+make build           # Build frontend and container images (alias for build-dev)
+make build-dev       # Build frontend and container images for development
+make build-prod      # Build frontend and container images for production
+make build-frontend  # Build frontend only
+
+# Pushing
+make push            # Push development images (alias for push-dev)
+make push-dev        # Push development images to registry
+make push-prod       # Push production images to registry
+
+# Deployment
+make deploy          # Deploy to development (alias for deploy-dev)
+make deploy-dev      # Deploy to development environment
+make deploy-prod     # Deploy to production environment
+
+# Health checks
+make health-backend  # Check backend health
+make health-frontend # Check frontend health
+
+# Cleanup
+make clean           # Clean build artifacts
+make clean-all       # Clean everything
+```
+
+## Testing
+
+### Run Tests
+
+```bash
+# Run all tests
+make test
+
+# Run specific tests
+make test-frontend        # Frontend tests
+make test-backend         # Backend tests  
+make test-backend-verbose # Backend tests with verbose output
+
+# Linting
+make lint                 # Run frontend linting
+```
+
+### Test Structure
+
+- **Frontend**: Jest and React Testing Library
+- **Backend**: pytest with comprehensive MCP integration tests
+- **E2E**: Tests for chat functionality and MCP tool integration
+
+## Troubleshooting
+
+### Common Issues
+
+1. **MCP servers not starting**:
+   - Check Node.js is installed in container
+   - Verify MCP config file format
+   - Check server permissions and paths
+
+2. **Memory issues in OpenShift**:
+   - Backend has been configured with 2Gi memory limit
+   - Increase if running many MCP servers
+
+3. **API key issues**:
+   - Ensure ANTHROPIC_API_KEY is set correctly
+   - Check API key permissions and usage limits
+
+4. **Build failures**:
+   - Run `make clean` before rebuilding
+   - Check Docker daemon is running
+   - Verify image registry permissions
+
+### Getting Help
+
+- Check the [MCP documentation](backend/docs/) for integration issues
+- Review OpenShift logs: `oc logs -f deployment/backend`
+- Test API endpoints directly: `curl http://localhost:8000/api/health`
 
 ## License
 
-Apache License 2.0
+Apache License 2.0 - see [LICENSE](LICENSE) file for details.

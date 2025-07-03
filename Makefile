@@ -5,7 +5,7 @@ REGISTRY ?= quay.io/cfchase
 TAG ?= latest
 
 
-.PHONY: help setup dev build build-prod test clean push push-prod deploy deploy-prod undeploy undeploy-prod kustomize kustomize-prod
+.PHONY: help setup dev build build-dev build-prod test clean push push-dev push-prod deploy deploy-dev deploy-prod undeploy undeploy-prod kustomize kustomize-prod
 
 # Default target
 help: ## Show this help message
@@ -42,9 +42,11 @@ dev-backend: ## Run backend development server
 build-frontend: ## Build frontend for production
 	cd frontend && npm run build
 
-build: build-frontend ## Build frontend and container images
+build-dev: build-frontend ## Build frontend and container images for development
 	@echo "Building container images for $(REGISTRY) with tag $(TAG)..."
 	./scripts/build-images.sh $(TAG) $(REGISTRY)
+
+build: build-dev ## Alias for build-dev
 
 build-prod: build-frontend ## Build frontend and container images for production
 	@echo "Building container images for $(REGISTRY) with tag prod..."
@@ -69,9 +71,11 @@ test-backend-verbose: ## Run backend tests with verbose output
 lint: ## Run linting on frontend
 	cd frontend && npm run lint
 
-push: ## Push container images to registry
+push-dev: ## Push container images to registry for development
 	@echo "Pushing images to $(REGISTRY) with tag $(TAG)..."
 	./scripts/push-images.sh $(TAG) $(REGISTRY)
+
+push: push-dev ## Alias for push-dev
 
 push-prod: ## Push container images to registry with prod tag
 	@echo "Pushing images to $(REGISTRY) with tag prod..."
@@ -84,9 +88,11 @@ kustomize: ## Preview development deployment manifests
 kustomize-prod: ## Preview production deployment manifests
 	kustomize build k8s/overlays/prod
 
-deploy: ## Deploy to development environment
+deploy-dev: ## Deploy to development environment
 	@echo "Deploying to development..."
 	./scripts/deploy.sh dev
+
+deploy: deploy-dev ## Alias for deploy-dev
 
 deploy-prod: ## Deploy to production environment
 	@echo "Deploying to production..."
