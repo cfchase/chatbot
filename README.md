@@ -6,6 +6,7 @@ A full-stack chatbot application with React frontend (Vite) using PatternFly and
 
 - **Frontend**: React with TypeScript and Vite - simple UI with health check button
 - **Backend**: FastAPI with Python - minimal API with health check endpoint
+- **AI Integration**: Claude API with MCP (Model Context Protocol) support
 - **Containerization**: Docker and Docker Compose
 - **Deployment**: OpenShift with Kustomize
 - **Container Registry**: Quay.io
@@ -170,7 +171,27 @@ Copy `backend/.env.example` to `backend/.env` and configure:
 ```env
 PORT=8000
 ENVIRONMENT=development
+ANTHROPIC_API_KEY=your-anthropic-api-key
+ANTHROPIC_MODEL=claude-sonnet-4-20250514
 ```
+
+### MCP Configuration (Optional)
+
+To extend Claude with custom tools via MCP servers, create `backend/mcp-config.json`:
+
+```json
+{
+  "mcpServers": {
+    "example-server": {
+      "transport": "stdio",
+      "command": "python",
+      "args": ["path/to/your/mcp_server.py"]
+    }
+  }
+}
+```
+
+See [MCP Setup Guide](backend/MCP_README.md) for detailed instructions.
 
 ### Frontend Configuration
 
@@ -186,6 +207,42 @@ The backend provides the following endpoints:
 
 - `GET /` - Root endpoint
 - `GET /api/health` - Health check endpoint
+- `POST /api/chat` - Chat with Claude (with MCP tool support)
+- `GET /api/mcp/tools` - List available MCP tools
+
+## MCP Integration
+
+This chatbot includes MCP (Model Context Protocol) support, allowing you to extend Claude's capabilities with custom tools from MCP servers. MCP enables:
+
+- **Custom Tools**: Add domain-specific tools that Claude can use
+- **External Integrations**: Connect to databases, APIs, or local services
+- **Flexible Transports**: Support for stdio, HTTP, and WebSocket connections
+
+### Documentation
+
+- [MCP Setup Guide](backend/MCP_README.md) - Quick start guide for adding MCP servers
+- [Technical Documentation](backend/docs/MCP_INTEGRATION.md) - Detailed architecture and implementation
+- [API Reference](backend/docs/MCP_API.md) - Complete API documentation
+
+### Quick Example
+
+Create a simple MCP server (`calculator.py`):
+
+```python
+from fastmcp import FastMCP
+
+mcp = FastMCP("calculator")
+
+@mcp.tool()
+def add(a: float, b: float) -> float:
+    """Add two numbers"""
+    return a + b
+
+if __name__ == "__main__":
+    mcp.run()
+```
+
+Add to `backend/mcp-config.json` and Claude will have access to your custom tools!
 
 ## Customization
 
