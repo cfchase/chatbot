@@ -25,7 +25,6 @@ class Settings(BaseSettings):
     temperature: float = Field(default=0.7, description="Temperature for Claude responses")
     
     # MCP Settings
-    mcp_enabled: bool = Field(default=True, description="Enable MCP integration")
     mcp_config_path: str = Field(default="mcp-config.json", description="Path to MCP configuration file")
 
 
