@@ -3,7 +3,7 @@
     "test-server": {
       "transport": "stdio",
       "command": "python",
-      "args": ["-m", "tests.mocks.mock_mcp_server"]
+      "args": ["tests/mocks/mock_mcp_server.py"]
     }
   }
 }
