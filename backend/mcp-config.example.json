@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-filesystem", "/tmp"]
+    },
+    "weather": {
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-weather"]
+    }
+  }
+}

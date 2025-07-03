@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "test-server": {
+      "transport": "stdio",
+      "command": "python",
+      "args": ["-m", "tests.mocks.mock_mcp_server"]
+    }
+  }
+}
