@@ -106,6 +106,20 @@ env-setup: ## Copy environment example files
 	@if [ ! -f backend/.env ]; then cp backend/.env.example backend/.env; echo "Created backend/.env"; fi
 	@if [ ! -f frontend/.env ]; then cp frontend/.env.example frontend/.env; echo "Created frontend/.env"; fi
 
+env-setup-k8s: ## Copy Kubernetes example files for configuration
+	@echo "Setting up Kubernetes configuration files..."
+	@for env in dev prod; do \
+		if [ ! -f k8s/overlays/$$env/.env ]; then \
+			cp k8s/overlays/$$env/.env.example k8s/overlays/$$env/.env; \
+			echo "Created k8s/overlays/$$env/.env - EDIT THIS FILE with your API keys"; \
+		fi; \
+		if [ ! -f k8s/overlays/$$env/mcp-config.json ]; then \
+			cp k8s/overlays/$$env/mcp-config.example.json k8s/overlays/$$env/mcp-config.json; \
+			echo "Created k8s/overlays/$$env/mcp-config.json"; \
+		fi; \
+	done
+	@echo "⚠️  IMPORTANT: Edit the .env files with your actual API keys before deploying!"
+
 # Health Checks
 health-backend: ## Check backend health
 	@echo "Checking backend health..."

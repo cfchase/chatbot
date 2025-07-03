@@ -34,6 +34,23 @@ if ! oc whoami &> /dev/null; then
     exit 1
 fi
 
+# Check for required configuration files
+if [ ! -f "k8s/overlays/$DEPLOY_ENV/.env" ]; then
+    echo "Error: Missing .env file for $DEPLOY_ENV environment"
+    echo "Please copy .env.example to .env and configure with your values:"
+    echo "  cp k8s/overlays/$DEPLOY_ENV/.env.example k8s/overlays/$DEPLOY_ENV/.env"
+    echo "  # Edit k8s/overlays/$DEPLOY_ENV/.env with your API keys"
+    exit 1
+fi
+
+if [ ! -f "k8s/overlays/$DEPLOY_ENV/mcp-config.json" ]; then
+    echo "Warning: Missing mcp-config.json file for $DEPLOY_ENV environment"
+    echo "Creating default empty MCP configuration..."
+    echo '{"mcpServers":{}}' > "k8s/overlays/$DEPLOY_ENV/mcp-config.json"
+    echo "✅ Created k8s/overlays/$DEPLOY_ENV/mcp-config.json with empty MCP servers"
+    echo "   To add MCP servers, copy from example: cp k8s/overlays/$DEPLOY_ENV/mcp-config.example.json k8s/overlays/$DEPLOY_ENV/mcp-config.json"
+fi
+
 # Create namespace if it doesn't exist
 echo "Creating namespace if it doesn't exist..."
 oc create namespace "$NAMESPACE" --dry-run=client -o yaml | oc apply -f -

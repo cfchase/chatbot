@@ -12,10 +12,10 @@ spec:
           value: "development"
         resources:
           requests:
-            memory: "64Mi"
+            memory: "256Mi"
             cpu: "50m"
           limits:
-            memory: "256Mi"
+            memory: "1Gi"
             cpu: "200m"
 ---
 apiVersion: apps/v1

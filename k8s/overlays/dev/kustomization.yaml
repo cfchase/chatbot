@@ -13,6 +13,11 @@ secretGenerator:
   - .env
   name: backend-secret
 
+configMapGenerator:
+- files:
+  - mcp-config.json
+  name: mcp-config
+
 images:
 - name: quay.io/cfchase/chatbot-backend
   newTag: latest

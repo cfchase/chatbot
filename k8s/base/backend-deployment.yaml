@@ -30,12 +30,17 @@ spec:
         envFrom:
         - secretRef:
             name: backend-secret
+        volumeMounts:
+        - name: mcp-config
+          mountPath: /app/mcp-config.json
+          subPath: mcp-config.json
+          readOnly: true
         resources:
           requests:
-            memory: "128Mi"
+            memory: "512Mi"
             cpu: "100m"
           limits:
-            memory: "512Mi"
+            memory: "2Gi"
             cpu: "500m"
         livenessProbe:
           tcpSocket:
@@ -54,3 +59,7 @@ spec:
           capabilities:
             drop:
             - ALL
+      volumes:
+      - name: mcp-config
+        configMap:
+          name: mcp-config

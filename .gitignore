@@ -12,6 +12,10 @@
 k8s/overlays/dev/.env
 k8s/overlays/prod/.env
 
+# MCP configuration files (contain environment-specific paths and settings)
+k8s/overlays/dev/mcp-config.json
+k8s/overlays/prod/mcp-config.json
+
 # IDE and Editors
 .vscode/
 .idea/
