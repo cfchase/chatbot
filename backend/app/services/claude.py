@@ -103,10 +103,13 @@ class ClaudeService:
         except Exception as e:
             logger.error(f"Error getting Claude completion: {str(e)}")
             # Add more context to the error
-            if "api_key" in str(e).lower():
+            error_str = str(e).lower()
+            if "api_key" in error_str:
                 raise Exception("Invalid or missing API key")
-            elif "rate" in str(e).lower():
+            elif "rate" in error_str:
                 raise Exception("Rate limit exceeded. Please try again later.")
+            elif "overloaded" in error_str:
+                raise Exception("Claude API is currently overloaded. Please try again in a few moments.")
             else:
                 raise Exception(f"Claude API error: {str(e)}")
     
@@ -204,10 +207,13 @@ class ClaudeService:
         except Exception as e:
             logger.error(f"Error getting streaming Claude completion: {str(e)}")
             # Add more context to the error
-            if "api_key" in str(e).lower():
+            error_str = str(e).lower()
+            if "api_key" in error_str:
                 raise Exception("Invalid or missing API key")
-            elif "rate" in str(e).lower():
+            elif "rate" in error_str:
                 raise Exception("Rate limit exceeded. Please try again later.")
+            elif "overloaded" in error_str:
+                raise Exception("Claude API is currently overloaded. Please try again in a few moments.")
             else:
                 raise Exception(f"Claude API error: {str(e)}")
     
