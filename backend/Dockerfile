@@ -24,10 +24,17 @@ RUN uv sync --frozen --no-dev
 # Production stage
 FROM python:3.11-slim AS runtime
 
-# Install system dependencies for runtime
+# Install system dependencies for runtime including Node.js
 RUN apt-get update && apt-get install -y \
     curl \
+    nodejs \
+    npm \
     && rm -rf /var/lib/apt/lists/*
+
+# Create global npm cache directory with proper permissions for OpenShift
+RUN mkdir -p /.npm && \
+    chgrp -R 0 /.npm && \
+    chmod -R g=u /.npm
 
 # Create app user for security
 RUN groupadd -r app && useradd -r -g app app

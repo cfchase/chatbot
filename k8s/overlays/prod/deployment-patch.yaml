@@ -9,10 +9,10 @@ spec:
       - name: backend
         resources:
           requests:
-            memory: "256Mi"
+            memory: "1Gi"
             cpu: "200m"
           limits:
-            memory: "1Gi"
+            memory: "4Gi"
             cpu: "1000m"
 ---
 apiVersion: apps/v1

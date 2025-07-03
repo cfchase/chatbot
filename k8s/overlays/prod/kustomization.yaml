@@ -13,6 +13,11 @@ secretGenerator:
   - .env
   name: backend-secret
 
+configMapGenerator:
+- files:
+  - mcp-config.json
+  name: mcp-config
+
 replicas:
 - count: 3
   name: backend
