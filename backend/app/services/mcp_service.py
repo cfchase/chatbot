@@ -16,18 +16,21 @@ class MCPService:
         self.tools: List[Dict[str, Any]] = []
         self._config: Optional[Dict[str, Any]] = None
         self._initialized = False
+        self._config_loaded = False
+        self._load_config_and_client()
     
-    async def initialize(self) -> None:
-        """Initialize the MCP service by loading config and connecting to servers"""
-        if self._initialized:
+    def _load_config_and_client(self) -> None:
+        """Load configuration and create client (synchronous)"""
+        if self._config_loaded:
             return
             
+        self._config_loaded = True
+        
         try:
             # Load configuration
             config_path = Path(settings.mcp_config_path)
             if not config_path.exists():
                 logger.info(f"MCP config file not found at {config_path}. MCP tools will not be available.")
-                self._initialized = True
                 return
             
             with open(config_path, 'r') as f:
@@ -35,7 +38,26 @@ class MCPService:
             
             # Initialize FastMCP client with the configuration
             self.client = Client(self._config)
+            logger.info(f"MCP client created with config from {config_path}")
             
+        except Exception as e:
+            logger.error(f"Failed to load MCP config or create client: {str(e)}")
+            self._config = None
+            self.client = None
+    
+    async def initialize(self) -> None:
+        """Initialize the MCP service by connecting to servers and discovering tools"""
+        if self._initialized:
+            return
+        
+        # Mark as initialized immediately to prevent multiple initialization attempts
+        self._initialized = True
+        
+        if not self.client:
+            logger.info("No MCP client available. MCP tools will not be available.")
+            return
+            
+        try:
             # Connect to servers and discover tools
             async with self.client:
                 discovered_tools = await self.client.list_tools()
@@ -52,24 +74,27 @@ class MCPService:
                 
                 logger.info(f"MCP initialized with {len(self.tools)} tools from {len(self._config.get('mcpServers', {}))} servers")
                 
-            self._initialized = True
-            
         except Exception as e:
-            logger.error(f"Failed to initialize MCP service: {str(e)}")
+            logger.error(f"Failed to initialize MCP tools: {str(e)}")
             self.tools = []
-            self._initialized = True
     
     async def shutdown(self) -> None:
         """Shutdown the MCP service and close connections"""
-        if self.client:
-            try:
-                await self.client.__aexit__(None, None, None)
-            except Exception as e:
-                logger.error(f"Error shutting down MCP client: {str(e)}")
-        
+        # Simply reset the service state
+        # The Client will handle cleanup when garbage collected
         self.client = None
         self.tools = []
         self._initialized = False
+        self._config_loaded = False
+        self._config = None
+    
+    def _reset_for_testing(self) -> None:
+        """Reset the service for testing purposes"""
+        self.client = None
+        self.tools = []
+        self._initialized = False
+        self._config_loaded = False
+        self._config = None
     
     def get_tools(self) -> List[Dict[str, Any]]:
         """Get the list of available tools in Anthropic format"""

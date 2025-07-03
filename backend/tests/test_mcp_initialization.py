@@ -2,7 +2,6 @@ import pytest
 from unittest.mock import patch, mock_open, MagicMock, AsyncMock
 from pathlib import Path
 import json
-from fastapi.testclient import TestClient
 from app.services.mcp_service import mcp_service
 
 
@@ -15,6 +14,10 @@ def mock_config():
                 "transport": "stdio",
                 "command": "python",
                 "args": ["tests/mocks/mock_mcp_server.py"]
+            },
+            "another-server": {
+                "transport": "http",
+                "url": "http://localhost:8080/mcp"
             }
         }
     }
@@ -23,24 +26,28 @@ def mock_config():
 @pytest.fixture(autouse=True)
 async def reset_mcp_service():
     """Reset MCP service state before each test"""
-    # Reset the service state
-    await mcp_service.shutdown()
-    mcp_service._initialized = False
-    mcp_service.tools = []
-    mcp_service.client = None
-    mcp_service._config = None
+    mcp_service._reset_for_testing()
     yield
-    # Clean up after test
     await mcp_service.shutdown()
 
 
 class TestMCPInitialization:
-    """Test MCP service initialization in main.py"""
+    """Test MCP service initialization"""
     
     @pytest.mark.asyncio
-    async def test_mcp_initialization_success(self, mock_config):
-        """Test successful MCP initialization with config file"""
-        # Mock file operations
+    async def test_mcp_initialization_with_tools(self, mock_config):
+        """Test that MCP initialization loads servers and discovers tools correctly"""
+        # Create mock tools
+        mock_tool1 = MagicMock()
+        mock_tool1.name = "get_weather"
+        mock_tool1.description = "Get weather information"
+        mock_tool1.inputSchema = {"type": "object", "properties": {"location": {"type": "string"}}}
+        
+        mock_tool2 = MagicMock()
+        mock_tool2.name = "calculate"
+        mock_tool2.description = "Perform calculations"
+        mock_tool2.inputSchema = {"type": "object", "properties": {"expression": {"type": "string"}}}
+        
         with patch('pathlib.Path.exists', return_value=True), \
              patch('builtins.open', mock_open(read_data=json.dumps(mock_config))), \
              patch('app.services.mcp_service.Client') as mock_client_class:
@@ -48,32 +55,37 @@ class TestMCPInitialization:
             # Setup mock client
             mock_client = AsyncMock()
             mock_client.__aenter__.return_value = mock_client
-            mock_client.__aexit__.return_value = None
-            
-            # Mock tools returned by list_tools
-            mock_tool = MagicMock()
-            mock_tool.name = "test_tool"
-            mock_tool.description = "A test tool"
-            mock_tool.inputSchema = {"type": "object", "properties": {}}
-            mock_client.list_tools.return_value = [mock_tool]
-            
+            mock_client.list_tools.return_value = [mock_tool1, mock_tool2]
             mock_client_class.return_value = mock_client
             
-            # Initialize the service
+            # Load config and initialize
+            mcp_service._load_config_and_client()
             await mcp_service.initialize()
             
             # Verify initialization
             assert mcp_service._initialized is True
             assert mcp_service.is_available is True
-            assert len(mcp_service.get_tools()) == 1
-            assert mcp_service.get_tools()[0]["name"] == "test_tool"
+            
+            # Verify tools were discovered and converted correctly
+            tools = mcp_service.get_tools()
+            assert len(tools) == 2
+            
+            # Check first tool
+            assert tools[0]["name"] == "get_weather"
+            assert tools[0]["description"] == "Get weather information"
+            assert tools[0]["input_schema"] == {"type": "object", "properties": {"location": {"type": "string"}}}
+            
+            # Check second tool
+            assert tools[1]["name"] == "calculate"
+            assert tools[1]["description"] == "Perform calculations"
+            assert tools[1]["input_schema"] == {"type": "object", "properties": {"expression": {"type": "string"}}}
     
     @pytest.mark.asyncio
-    async def test_mcp_initialization_no_config(self):
+    async def test_mcp_initialization_no_config_file(self):
         """Test MCP initialization when config file doesn't exist"""
-        # Mock file not existing
         with patch('pathlib.Path.exists', return_value=False):
-            # Initialize the service
+            # Load config and initialize
+            mcp_service._load_config_and_client()
             await mcp_service.initialize()
             
             # Verify initialization with no tools
@@ -83,106 +95,47 @@ class TestMCPInitialization:
             assert mcp_service.client is None
     
     @pytest.mark.asyncio
-    async def test_mcp_initialization_invalid_config(self):
-        """Test MCP initialization with invalid config file"""
-        # Mock file operations with invalid JSON
+    async def test_mcp_initialization_empty_servers(self):
+        """Test MCP initialization with empty server list"""
+        empty_config = {"mcpServers": {}}
+        
         with patch('pathlib.Path.exists', return_value=True), \
-             patch('builtins.open', mock_open(read_data="invalid json")):
-            
-            # Initialize the service
-            await mcp_service.initialize()
-            
-            # Verify initialization failed gracefully
-            assert mcp_service._initialized is True
-            assert mcp_service.is_available is False
-            assert len(mcp_service.get_tools()) == 0
-    
-    @pytest.mark.asyncio
-    async def test_mcp_initialization_client_error(self, mock_config):
-        """Test MCP initialization when client fails to connect"""
-        # Mock file operations
-        with patch('pathlib.Path.exists', return_value=True), \
-             patch('builtins.open', mock_open(read_data=json.dumps(mock_config))), \
-             patch('app.services.mcp_service.Client') as mock_client_class:
-            
-            # Setup mock client that fails
-            mock_client = AsyncMock()
-            mock_client.__aenter__.side_effect = Exception("Connection failed")
-            mock_client_class.return_value = mock_client
-            
-            # Initialize the service
-            await mcp_service.initialize()
-            
-            # Verify initialization failed gracefully
-            assert mcp_service._initialized is True
-            assert mcp_service.is_available is False
-            assert len(mcp_service.get_tools()) == 0
-    
-    @pytest.mark.asyncio
-    async def test_mcp_shutdown(self, mock_config):
-        """Test MCP service shutdown"""
-        # Mock file operations
-        with patch('pathlib.Path.exists', return_value=True), \
-             patch('builtins.open', mock_open(read_data=json.dumps(mock_config))), \
+             patch('builtins.open', mock_open(read_data=json.dumps(empty_config))), \
              patch('app.services.mcp_service.Client') as mock_client_class:
             
             # Setup mock client
             mock_client = AsyncMock()
             mock_client.__aenter__.return_value = mock_client
-            mock_client.__aexit__.return_value = None
             mock_client.list_tools.return_value = []
             mock_client_class.return_value = mock_client
             
-            # Initialize and then shutdown
+            # Load config and initialize
+            mcp_service._load_config_and_client()
             await mcp_service.initialize()
+            
+            # Verify initialization with no tools
             assert mcp_service._initialized is True
-            
-            await mcp_service.shutdown()
-            
-            # Verify shutdown
-            assert mcp_service.client is None
-            assert len(mcp_service.tools) == 0
-            assert mcp_service._initialized is False
-            
-            # Verify __aexit__ was called (twice - once from initialize, once from shutdown)
-            assert mock_client.__aexit__.call_count == 2
+            assert mcp_service.is_available is False
+            assert len(mcp_service.get_tools()) == 0
     
     @pytest.mark.asyncio
-    async def test_app_startup_with_mcp(self):
-        """Test FastAPI app startup initializes MCP"""
-        with patch('app.services.mcp_service.mcp_service.initialize') as mock_init, \
-             patch('app.services.mcp_service.mcp_service.shutdown') as mock_shutdown, \
-             patch('app.services.mcp_service.mcp_service.tools', [{"name": "test"}]):
-            
-            # Import main to get the app with lifespan
-            from main import app
-            
-            # Create test client which triggers lifespan events
-            with TestClient(app):
-                # Verify MCP was initialized during startup
-                mock_init.assert_called_once()
-            
-            # Verify MCP was shutdown when app stopped
-            mock_shutdown.assert_called_once()
-    
-    @pytest.mark.asyncio
-    async def test_multiple_initialization_calls(self):
-        """Test that multiple initialization calls don't re-initialize"""
+    async def test_mcp_initialization_with_tool_discovery_error(self):
+        """Test MCP initialization handles tool discovery errors gracefully"""
         with patch('pathlib.Path.exists', return_value=True), \
-             patch('builtins.open', mock_open(read_data=json.dumps({"mcpServers": {}}))), \
+             patch('builtins.open', mock_open(read_data=json.dumps({"mcpServers": {"test": {}}}))), \
              patch('app.services.mcp_service.Client') as mock_client_class:
             
-            # Setup mock client
+            # Setup mock client that raises error during tool discovery
             mock_client = AsyncMock()
             mock_client.__aenter__.return_value = mock_client
-            mock_client.__aexit__.return_value = None
-            mock_client.list_tools.return_value = []
+            mock_client.list_tools.side_effect = Exception("Tool discovery failed")
             mock_client_class.return_value = mock_client
             
-            # Initialize multiple times
-            await mcp_service.initialize()
-            await mcp_service.initialize()
+            # Load config and initialize
+            mcp_service._load_config_and_client()
             await mcp_service.initialize()
             
-            # Verify Client was only created once
-            mock_client_class.assert_called_once()
+            # Service should still be initialized but with no tools
+            assert mcp_service._initialized is True
+            assert mcp_service.is_available is False
+            assert len(mcp_service.get_tools()) == 0

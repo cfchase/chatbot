@@ -53,14 +53,12 @@ def mock_tools():
 async def clean_mcp_service():
     """Ensure MCP service is clean before and after tests"""
     # Reset before test
-    await mcp_service.shutdown()
-    mcp_service._initialized = False
+    mcp_service._reset_for_testing()
     
     yield mcp_service
     
     # Reset after test
     await mcp_service.shutdown()
-    mcp_service._initialized = False
 
 
 class TestMCPService:
@@ -79,6 +77,9 @@ class TestMCPService:
             mock_client.__aexit__.return_value = None
             mock_client.list_tools.return_value = mock_tools
             mock_client_class.return_value = mock_client
+            
+            # Load config and client with mocks in place
+            clean_mcp_service._load_config_and_client()
             
             # Initialize
             await clean_mcp_service.initialize()
@@ -149,6 +150,9 @@ class TestMCPService:
             mock_client.list_tools.return_value = mock_tools
             mock_client_class.return_value = mock_client
             
+            # Load config and client with mocks in place
+            clean_mcp_service._load_config_and_client()
+            
             # Initialize multiple times
             await clean_mcp_service.initialize()
             await clean_mcp_service.initialize()
@@ -176,6 +180,9 @@ class TestMCPService:
             mock_client.call_tool.return_value = [mock_result]
             
             mock_client_class.return_value = mock_client
+            
+            # Load config and client with mocks in place
+            clean_mcp_service._load_config_and_client()
             
             # Initialize service
             await clean_mcp_service.initialize()
@@ -205,6 +212,9 @@ class TestMCPService:
             
             mock_client_class.return_value = mock_client
             
+            # Load config and client with mocks in place
+            clean_mcp_service._load_config_and_client()
+            
             # Initialize service
             await clean_mcp_service.initialize()
             
@@ -231,6 +241,9 @@ class TestMCPService:
             
             mock_client_class.return_value = mock_client
             
+            # Load config and client with mocks in place
+            clean_mcp_service._load_config_and_client()
+            
             # Initialize service
             await clean_mcp_service.initialize()
             
@@ -256,6 +269,9 @@ class TestMCPService:
             mock_client.call_tool.side_effect = Exception("Tool execution failed")
             
             mock_client_class.return_value = mock_client
+            
+            # Load config and client with mocks in place
+            clean_mcp_service._load_config_and_client()
             
             # Initialize service
             await clean_mcp_service.initialize()
@@ -284,6 +300,9 @@ class TestMCPService:
             mock_client.list_tools.return_value = mock_tools
             mock_client_class.return_value = mock_client
             
+            # Load config and client with mocks in place
+            clean_mcp_service._load_config_and_client()
+            
             # Initialize and shutdown
             await clean_mcp_service.initialize()
             assert clean_mcp_service._initialized is True
@@ -297,8 +316,8 @@ class TestMCPService:
             assert clean_mcp_service._initialized is False
             assert clean_mcp_service.is_available is False
             
-            # Verify __aexit__ was called (twice - once from initialize, once from shutdown)
-            assert mock_client.__aexit__.call_count == 2
+            # Verify __aexit__ was called once from initialize (async with)
+            assert mock_client.__aexit__.call_count == 1
     
     @pytest.mark.asyncio
     async def test_shutdown_with_error(self, mock_config, mock_tools, clean_mcp_service):
@@ -313,6 +332,9 @@ class TestMCPService:
             mock_client.__aexit__.side_effect = Exception("Shutdown error")
             mock_client.list_tools.return_value = mock_tools
             mock_client_class.return_value = mock_client
+            
+            # Load config and client with mocks in place
+            clean_mcp_service._load_config_and_client()
             
             # Initialize and shutdown
             await clean_mcp_service.initialize()
@@ -350,6 +372,9 @@ class TestMCPService:
             mock_client.__aexit__.return_value = None
             mock_client.list_tools.return_value = [mock_tool]
             mock_client_class.return_value = mock_client
+            
+            # Load config and client with mocks in place
+            clean_mcp_service._load_config_and_client()
             
             # Initialize
             await clean_mcp_service.initialize()
