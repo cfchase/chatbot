@@ -144,16 +144,15 @@ class TestMCPInitialization:
             assert len(mcp_service.tools) == 0
             assert mcp_service._initialized is False
             
-            # Verify __aexit__ was called
-            mock_client.__aexit__.assert_called_once()
+            # Verify __aexit__ was called (twice - once from initialize, once from shutdown)
+            assert mock_client.__aexit__.call_count == 2
     
     @pytest.mark.asyncio
     async def test_app_startup_with_mcp(self):
         """Test FastAPI app startup initializes MCP"""
         with patch('app.services.mcp_service.mcp_service.initialize') as mock_init, \
              patch('app.services.mcp_service.mcp_service.shutdown') as mock_shutdown, \
-             patch('app.services.mcp_service.mcp_service.is_available', True), \
-             patch('app.services.mcp_service.mcp_service.get_tools', return_value=[{"name": "test"}]):
+             patch('app.services.mcp_service.mcp_service.tools', [{"name": "test"}]):
             
             # Import main to get the app with lifespan
             from main import app
