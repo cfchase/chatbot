@@ -143,9 +143,5 @@ def list_items(category: str) -> Dict[str, Any]:
 if __name__ == "__main__":
     import asyncio
     
-    async def main():
-        async with mcp.server.run_stdio():
-            # Keep the server running
-            await asyncio.Event().wait()
-    
-    asyncio.run(main())
+    # Run the FastMCP server
+    mcp.run()
