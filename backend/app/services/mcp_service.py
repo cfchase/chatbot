@@ -30,7 +30,9 @@ class MCPService:
             # Load configuration
             config_path = Path(settings.mcp_config_path)
             if not config_path.exists():
-                logger.info(f"MCP config file not found at {config_path}. MCP tools will not be available.")
+                logger.info(f"MCP config file not found at {config_path}. Using empty configuration.")
+                self._config = {"mcpServers": {}}
+                self.client = Client(self._config)
                 return
             
             with open(config_path, 'r') as f:
