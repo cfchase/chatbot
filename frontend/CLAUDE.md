@@ -50,7 +50,7 @@ cd frontend && npm run test:watch        # Watch mode
 cd frontend && npm run lint              # Run ESLint
 cd frontend && npm run lint:fix          # Auto-fix linting issues
 cd frontend && npm run format            # Format with Prettier
-cd frontend && npm run type-check        # TypeScript type checking
+cd frontend && npm run typecheck        # TypeScript type checking
 ```
 
 ## UI Components and Design

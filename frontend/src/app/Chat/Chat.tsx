@@ -5,6 +5,7 @@ import {
   PageSection,
   Switch,
 } from '@patternfly/react-core';
+import { ArrowDownIcon } from '@patternfly/react-icons';
 import {
   Chatbot,
   ChatbotContent,
@@ -47,8 +48,43 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [streamingMode, setStreamingMode] = React.useState(true);
+  const [autoScrollEnabled, setAutoScrollEnabled] = React.useState(false);
   const streamControllerRef = React.useRef<EventSource | null>(null);
   const [announcement, setAnnouncement] = React.useState<string | undefined>();
+  const messageBoxRef = React.useRef<HTMLDivElement>(null);
+  const [userScrolledUp, setUserScrolledUp] = React.useState(false);
+  const scrollTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const scrollDetectionTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  // Scroll utility functions
+  const scrollToBottom = React.useCallback((smooth = true) => {
+    if (messageBoxRef.current) {
+      const container = messageBoxRef.current;
+      const scrollOptions: ScrollToOptions = {
+        top: container.scrollHeight,
+        behavior: smooth ? 'smooth' : 'auto',
+      };
+      container.scrollTo(scrollOptions);
+    }
+  }, []);
+
+  const isScrolledNearBottom = React.useCallback((threshold = 100) => {
+    if (!messageBoxRef.current) return true;
+    const container = messageBoxRef.current;
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    return distanceFromBottom <= threshold;
+  }, []);
+
+  const handleScroll = React.useCallback(() => {
+    // Throttle scroll detection for better performance
+    if (scrollDetectionTimeoutRef.current) {
+      clearTimeout(scrollDetectionTimeoutRef.current);
+    }
+    scrollDetectionTimeoutRef.current = setTimeout(() => {
+      const nearBottom = isScrolledNearBottom();
+      setUserScrolledUp(!nearBottom);
+    }, 100);
+  }, [isScrolledNearBottom]);
 
   const handleSendMessage = async (message: string | number) => {
     const messageText = typeof message === 'string' ? message : message.toString();
@@ -65,6 +101,11 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
       setInputValue('');
       setIsLoading(true);
       setError(null);
+      
+      // Auto-scroll when user sends a message
+      if (autoScrollEnabled) {
+        setTimeout(() => scrollToBottom(), 50);
+      }
 
       try {
         if (streamingMode) {
@@ -96,10 +137,23 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
                   }
                   return newMessages;
                 });
+                
+                // Auto-scroll during streaming if user hasn't scrolled up (throttled)
+                if (autoScrollEnabled && !userScrolledUp) {
+                  if (scrollTimeoutRef.current) {
+                    clearTimeout(scrollTimeoutRef.current);
+                  }
+                  scrollTimeoutRef.current = setTimeout(() => scrollToBottom(), 200);
+                }
               } else if (event.type === 'done') {
                 setIsLoading(false);
                 streamControllerRef.current = null;
                 setAnnouncement('Message received');
+                
+                // Final scroll when streaming is complete
+                if (autoScrollEnabled && !userScrolledUp) {
+                  setTimeout(() => scrollToBottom(), 100);
+                }
               } else if (event.type === 'error') {
                 setError(event.error || 'Streaming error occurred');
                 setIsLoading(false);
@@ -131,6 +185,11 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
 
           setMessages((prev) => [...prev, botMessage]);
           setAnnouncement('Message received');
+          
+          // Auto-scroll when bot message is received (non-streaming)
+          if (autoScrollEnabled && !userScrolledUp) {
+            setTimeout(() => scrollToBottom(), 100);
+          }
         }
       } catch (err) {
         console.error('Error sending message:', err);
@@ -144,6 +203,11 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
           timestamp: new Date(),
         };
         setMessages((prev) => [...prev, errorMessage]);
+        
+        // Auto-scroll when error message is added
+        if (autoScrollEnabled && !userScrolledUp) {
+          setTimeout(() => scrollToBottom(), 100);
+        }
       } finally {
         if (!streamingMode) {
           setIsLoading(false);
@@ -169,6 +233,25 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
     };
   }, []);
 
+  // Initial scroll to bottom on component mount (only if auto-scroll is enabled)
+  React.useEffect(() => {
+    if (autoScrollEnabled) {
+      setTimeout(() => scrollToBottom(false), 100);
+    }
+  }, [scrollToBottom, autoScrollEnabled]);
+
+  // Cleanup scroll timeouts on unmount
+  React.useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+      if (scrollDetectionTimeoutRef.current) {
+        clearTimeout(scrollDetectionTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const displayMode = ChatbotDisplayMode.embedded;
 
   return (
@@ -185,11 +268,44 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
                 onChange={(_event, checked) => setStreamingMode(checked)}
                 isDisabled={isLoading}
               />
+              <Switch
+                id="auto-scroll"
+                label="Auto-scroll"
+                isChecked={autoScrollEnabled}
+                onChange={(_event, checked) => setAutoScrollEnabled(checked)}
+                isDisabled={isLoading}
+              />
             </ChatbotHeaderActions>
           </ChatbotHeaderMain>
         </ChatbotHeader>
         <ChatbotContent>
-          <MessageBox announcement={announcement} ariaLabel="Chat messages">
+          {userScrolledUp && autoScrollEnabled && (
+            <div style={{ 
+              position: 'absolute', 
+              bottom: '80px', 
+              right: '20px', 
+              zIndex: 1000 
+            }}>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  scrollToBottom();
+                  setUserScrolledUp(false);
+                }}
+                icon={<ArrowDownIcon />}
+                aria-label="Scroll to bottom"
+                size="sm"
+              >
+                New messages
+              </Button>
+            </div>
+          )}
+          <MessageBox 
+            ref={messageBoxRef}
+            announcement={announcement} 
+            ariaLabel="Chat messages"
+            onScroll={handleScroll}
+          >
             {error && (
               <Alert 
                 variant="danger" 
