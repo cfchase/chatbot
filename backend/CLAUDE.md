@@ -1,0 +1,168 @@
+# Backend CLAUDE.md
+
+This file provides backend-specific guidance to Claude Code when working with the FastAPI backend.
+
+## Backend Architecture
+
+### FastAPI Backend
+- Python 3.11 with FastAPI framework
+- UV package manager for fast dependency management
+- Uvicorn as ASGI server
+- CORS middleware for frontend integration
+- MCP (Model Context Protocol) integration for AI capabilities
+- Anthropic Claude AI integration
+- Structured logging and error handling
+- Pydantic models for type safety and validation
+
+## Backend Development
+
+### Local Development
+```bash
+make dev-backend      # Run FastAPI server (port 8000)
+cd backend && uv run uvicorn main:app --reload --port 8000  # Direct command
+```
+
+### Dependencies
+```bash
+cd backend && uv add <package>           # Add runtime dependency
+cd backend && uv add --dev <package>     # Add development dependency
+cd backend && uv lock                    # Update lock file
+cd backend && uv sync                    # Install dependencies
+```
+
+### Testing
+```bash
+make test-backend     # Run backend tests
+cd backend && uv run pytest              # Direct command
+cd backend && uv run pytest -v           # Verbose output
+cd backend && uv run pytest --cov        # With coverage
+```
+
+### Linting and Type Checking
+```bash
+cd backend && uv run ruff check          # Run linting
+cd backend && uv run ruff format         # Format code
+cd backend && uv run mypy .              # Type checking
+```
+
+## API Endpoints
+
+The FastAPI backend provides:
+- `GET /` - Root endpoint with API information
+- `GET /api/health` - Health check endpoint
+- `POST /api/chat` - Chat endpoint for AI interactions
+- `GET /api/tools` - List available MCP tools
+- `POST /api/tools/{tool_name}` - Execute MCP tool
+
+### Adding New Endpoints
+When adding new API endpoints:
+1. Add the endpoint function to `main.py`
+2. Use Pydantic models for request/response validation
+3. Add proper error handling with HTTPException
+4. Include appropriate CORS headers
+5. Add logging for debugging
+6. Write tests for the new endpoint
+
+Example:
+```python
+from pydantic import BaseModel
+from fastapi import HTTPException
+
+class NewRequest(BaseModel):
+    field: str
+
+class NewResponse(BaseModel):
+    result: str
+
+@app.post("/api/new", response_model=NewResponse)
+async def new_endpoint(request: NewRequest):
+    try:
+        # Implementation here
+        return NewResponse(result="success")
+    except Exception as e:
+        logger.error(f"Error in new endpoint: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+```
+
+## Configuration
+
+### Environment Variables
+Backend configuration through `.env` file:
+- `ANTHROPIC_API_KEY` - Required for Claude AI integration
+- `ANTHROPIC_MODEL` - Claude model to use (default: claude-sonnet-4-20250514)
+- `LOG_LEVEL` - Logging level (default: INFO)
+- `CORS_ORIGINS` - Allowed CORS origins (default: http://localhost:8080)
+
+### MCP Integration
+The backend integrates with MCP servers for enhanced AI capabilities:
+- Servers are configured in the initialization
+- Tools are cached at startup for performance
+- Client connections are managed automatically
+- Error handling includes retry logic
+
+## Code Conventions
+
+### File Structure
+```
+backend/
+├── main.py              # Main FastAPI application
+├── models/              # Pydantic models
+├── services/            # Business logic services
+├── utils/               # Utility functions
+├── tests/               # Test files
+├── pyproject.toml       # Dependencies and project config
+├── uv.lock             # Locked dependency versions
+├── Dockerfile          # Container configuration
+└── .env.example        # Environment template
+```
+
+### Code Style
+- Use type hints for all functions and variables
+- Use Pydantic models for data validation
+- Implement proper error handling with specific exceptions
+- Add structured logging with context
+- Follow FastAPI best practices
+- Use dependency injection for services
+- Write comprehensive tests for all endpoints
+
+### Error Handling
+```python
+import logging
+from fastapi import HTTPException
+
+logger = logging.getLogger(__name__)
+
+try:
+    # Operation that might fail
+    result = risky_operation()
+except SpecificException as e:
+    logger.error(f"Specific error occurred: {e}", exc_info=True)
+    raise HTTPException(status_code=400, detail=f"Specific error: {str(e)}")
+except Exception as e:
+    logger.error(f"Unexpected error: {e}", exc_info=True)
+    raise HTTPException(status_code=500, detail="Internal server error")
+```
+
+## Common Backend Tasks
+
+### Adding New Dependencies
+- Runtime: `cd backend && uv add fastapi-users`
+- Development: `cd backend && uv add --dev pytest-asyncio`
+- Update lock file: `cd backend && uv lock`
+
+### Database Integration
+When adding database support:
+1. Add database dependency: `uv add sqlalchemy alembic`
+2. Create models in `models/` directory
+3. Set up database connection in `main.py`
+4. Add migration support with Alembic
+5. Update environment variables for database URL
+
+### Security Best Practices
+- Never log or expose API keys or secrets
+- Use environment variables for sensitive configuration
+- Implement proper authentication and authorization
+- Validate all input data with Pydantic models
+- Use HTTPS in production
+- Implement rate limiting for API endpoints
+- Follow OWASP security guidelines

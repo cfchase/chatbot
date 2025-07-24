@@ -15,11 +15,13 @@ This is a React FastAPI template for building full-stack applications with React
 │   ├── main.py          # Main FastAPI application
 │   ├── pyproject.toml   # Python dependencies and project config
 │   ├── uv.lock          # Locked dependency versions
-│   └── Dockerfile       # Backend container
+│   ├── Dockerfile       # Backend container
+│   └── CLAUDE.md        # Backend-specific Claude instructions
 ├── frontend/            # React frontend with Vite
 │   ├── src/            # React source code
 │   ├── package.json    # Node.js dependencies
-│   └── Dockerfile      # Frontend container
+│   ├── Dockerfile      # Frontend container
+│   └── CLAUDE.md       # Frontend-specific Claude instructions
 ├── k8s/                # Kubernetes/OpenShift manifests
 │   ├── base/          # Base kustomize resources
 │   └── overlays/      # Environment-specific overlays
@@ -80,31 +82,6 @@ make kustomize        # Preview dev manifests
 make kustomize-prod   # Preview prod manifests
 ```
 
-## Architecture
-
-### Frontend (React + Vite)
-- TypeScript for type safety
-- Vite for fast development and building
-- Axios for API communication
-- Simple UI with health check button
-- Vite dev server proxies /api/ to backend (local dev)
-- Nginx proxies /api/ to backend service (production)
-
-### Backend (FastAPI)
-- Python 3.11 with FastAPI framework
-- UV package manager for fast dependency management
-- Uvicorn as ASGI server
-- CORS middleware for frontend integration
-- Minimal API with only health check endpoint at `/api/health`
-
-### Deployment
-- Docker containers for both services
-- OpenShift Routes for external access
-- Kustomize for environment-specific configuration
-- Separate dev and prod overlays
-- Quay.io as container registry
-- OpenShift Security Context Constraints (SCC) compatible
-
 ## Configuration Files
 
 ### Environment Variables
@@ -120,12 +97,6 @@ make kustomize-prod   # Preview prod manifests
 - `docker-compose.yml` - Local development with containers
 - `k8s/base/kustomization.yaml` - Base Kubernetes resources
 - `k8s/overlays/*/kustomization.yaml` - Environment-specific configs
-
-## API Endpoints
-
-The FastAPI backend provides:
-- `GET /` - Root endpoint  
-- `GET /api/health` - Health check endpoint
 
 ## Development Workflow
 
