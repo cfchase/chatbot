@@ -255,7 +255,7 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
   const displayMode = ChatbotDisplayMode.embedded;
 
   return (
-    <PageSection hasBodyWrapper={false}>
+    <PageSection isFilled hasBodyWrapper={false}>
       <Chatbot displayMode={displayMode} isVisible>
         <ChatbotHeader>
           <ChatbotHeaderMain>

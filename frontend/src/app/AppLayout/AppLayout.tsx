@@ -155,6 +155,7 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
       masthead={masthead}
       sidebar={sidebarOpen && Sidebar}
       skipToContent={PageSkipToContent}
+      isContentFilled
     >
       {children}
     </Page>
