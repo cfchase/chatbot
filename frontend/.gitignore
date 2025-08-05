@@ -61,3 +61,6 @@ coverage/
 
 # TypeScript cache
 *.tsbuildinfo
+
+# Visual regression test screenshots
+__screenshots__/
