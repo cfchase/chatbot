@@ -23,6 +23,7 @@ import {
 import { ChatAPI, StreamingEvent } from '@app/api/chat';
 import aiLogo from '@app/images/ai-logo-transparent.svg';
 import avatarImg from '@app/images/user-avatar.svg';
+import { ImagePreview } from './ImagePreview';
 
 export interface IChatProps {
   sampleProp?: string;
@@ -332,6 +333,9 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
                   avatar={message.sender === 'user' ? avatarImg : aiLogo}
                   name={message.sender === 'user' ? 'You' : 'Claude AI'}
                   isLoading={isLastBotMessage}
+                  extraContent={message.sender === 'bot' ? {
+                    afterMainContent: <ImagePreview content={message.text} />
+                  } : undefined}
                 />
               );
             })}

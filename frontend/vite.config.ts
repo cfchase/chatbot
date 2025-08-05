@@ -29,7 +29,7 @@ export default defineConfig({
     host: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: `http://localhost:${process.env.BACKEND_PORT || '8000'}`,
         changeOrigin: true,
       },
     },

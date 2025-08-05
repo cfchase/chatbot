@@ -33,10 +33,10 @@ dev: ## Run both frontend and backend in development mode
 	npx concurrently "make dev-backend" "make dev-frontend"
 
 dev-frontend: ## Run frontend development server
-	cd frontend && npm run dev
+	cd frontend && npm run dev -- --port $${FRONTEND_PORT:-8080}
 
 dev-backend: ## Run backend development server
-	cd backend && uv run python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+	cd backend && uv run python -m uvicorn main:app --reload --host 0.0.0.0 --port $${BACKEND_PORT:-8000}
 
 # Building
 build-frontend: ## Build frontend for production
