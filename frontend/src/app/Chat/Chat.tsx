@@ -331,7 +331,7 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
                   content={message.text}
                   timestamp={message.timestamp.toLocaleTimeString()}
                   avatar={message.sender === 'user' ? avatarImg : aiLogo}
-                  name={message.sender === 'user' ? 'You' : 'Claude AI'}
+                  name={message.sender === 'user' ? 'You' : 'AI Assistant'}
                   isLoading={isLastBotMessage}
                   extraContent={message.sender === 'bot' ? {
                     afterMainContent: <ImagePreview content={message.text} />
@@ -345,7 +345,7 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
                 role="bot"
                 content=""
                 avatar={aiLogo}
-                name="Claude AI"
+                name="AI Assistant"
                 isLoading
               />
             )}
@@ -361,7 +361,7 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
             onChange={(_event, value) => setInputValue(value as string)}
             placeholder="Type your message..."
           />
-          <ChatbotFootnote label="Powered by Claude AI" />
+          <ChatbotFootnote label="AI-Powered Chat" />
         </ChatbotFooter>
       </Chatbot>
     </PageSection>
