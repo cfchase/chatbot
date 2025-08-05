@@ -63,17 +63,24 @@ const validateImageUrl = (url: string): SecurityValidationResult => {
     }
     
     // Check for localhost/private IP ranges (prevent SSRF)
+    // Allow localhost URLs in development mode (when the page is also on localhost)
     const hostname = urlObj.hostname.toLowerCase();
-    if (
-      hostname === 'localhost' ||
-      hostname === '127.0.0.1' ||
-      hostname.startsWith('192.168.') ||
-      hostname.startsWith('10.') ||
-      hostname.startsWith('172.') ||
-      hostname === '0.0.0.0' ||
-      hostname.includes('..') // Path traversal attempt
-    ) {
-      return { isValid: false, reason: 'Access to local/private networks is not allowed.' };
+    const isLocalDevelopment = window.location.hostname === 'localhost' || 
+                               window.location.hostname === '127.0.0.1';
+    
+    // Allow localhost URLs if we're in local development
+    if (!isLocalDevelopment) {
+      if (
+        hostname === 'localhost' ||
+        hostname === '127.0.0.1' ||
+        hostname.startsWith('192.168.') ||
+        hostname.startsWith('10.') ||
+        hostname.startsWith('172.') ||
+        hostname === '0.0.0.0' ||
+        hostname.includes('..') // Path traversal attempt
+      ) {
+        return { isValid: false, reason: 'Access to local/private networks is not allowed.' };
+      }
     }
     
     // Check domain allowlist (optional - can be disabled for more permissive behavior)
