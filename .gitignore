@@ -9,12 +9,11 @@
 .env.development.local
 .env.test.local
 .env.production.local
-k8s/overlays/dev/.env
-k8s/overlays/prod/.env
+k8s/overlays/deploy/.env
 
 # MCP configuration files (contain environment-specific paths and settings)
-k8s/overlays/dev/mcp-config.json
-k8s/overlays/prod/mcp-config.json
+k8s/overlays/deploy/mcp-config.json
+backend/mcp-config.json
 
 # IDE and Editors
 .vscode/

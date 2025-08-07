@@ -1,11 +1,25 @@
 # React FastAPI Template Makefile
 
+# Load environment variables from .env file if it exists
+-include .env
+export
+
+# Load environment-specific .env files if specified
+ifdef ENV
+    -include .env.$(ENV).local
+    export
+endif
+
 # Container Registry Operations
 REGISTRY ?= quay.io/cfchase
 TAG ?= latest
 
+# Deployment Configuration
+NAMESPACE ?= chatbot
+OVERLAY ?= deploy
 
-.PHONY: help setup dev build build-dev build-prod test clean push push-dev push-prod deploy deploy-dev deploy-prod undeploy undeploy-prod kustomize kustomize-prod
+
+.PHONY: help setup dev build test clean push deploy undeploy kustomize env-setup env-check env-setup-k8s health-backend health-frontend fresh-start quick-start
 
 # Default target
 help: ## Show this help message
@@ -42,15 +56,9 @@ dev-backend: ## Run backend development server
 build-frontend: ## Build frontend for production
 	cd frontend && npm run build
 
-build-dev: build-frontend ## Build frontend and container images for development
+build: build-frontend ## Build frontend and container images
 	@echo "Building container images for $(REGISTRY) with tag $(TAG)..."
 	./scripts/build-images.sh $(TAG) $(REGISTRY)
-
-build: build-dev ## Alias for build-dev
-
-build-prod: build-frontend ## Build frontend and container images for production
-	@echo "Building container images for $(REGISTRY) with tag prod..."
-	./scripts/build-images.sh prod $(REGISTRY)
 
 # Testing
 test: ## Run all tests (frontend and backend)
@@ -71,57 +79,49 @@ test-backend-verbose: ## Run backend tests with verbose output
 lint: ## Run linting on frontend
 	cd frontend && npm run lint
 
-push-dev: ## Push container images to registry for development
+push: ## Push container images to registry
 	@echo "Pushing images to $(REGISTRY) with tag $(TAG)..."
 	./scripts/push-images.sh $(TAG) $(REGISTRY)
 
-push: push-dev ## Alias for push-dev
-
-push-prod: ## Push container images to registry with prod tag
-	@echo "Pushing images to $(REGISTRY) with tag prod..."
-	./scripts/push-images.sh prod $(REGISTRY)
-
 # OpenShift/Kubernetes Deployment
-kustomize: ## Preview development deployment manifests
-	kustomize build k8s/overlays/dev
+kustomize: ## Preview deployment manifests (use OVERLAY=<name> to specify overlay)
+	./scripts/kustomize.sh $(OVERLAY)
 
-kustomize-prod: ## Preview production deployment manifests
-	kustomize build k8s/overlays/prod
+deploy: ## Deploy to Kubernetes/OpenShift (use NAMESPACE=<name> and OVERLAY=<name> to configure)
+	@echo "Deploying to namespace $(NAMESPACE) using overlay $(OVERLAY)..."
+	./scripts/deploy.sh $(OVERLAY) $(NAMESPACE)
 
-deploy-dev: ## Deploy to development environment
-	@echo "Deploying to development..."
-	./scripts/deploy.sh dev
-
-deploy: deploy-dev ## Alias for deploy-dev
-
-deploy-prod: ## Deploy to production environment
-	@echo "Deploying to production..."
-	./scripts/deploy.sh prod
-
-undeploy: ## Remove development deployment
-	@echo "Removing development deployment..."
-	./scripts/undeploy.sh dev
-
-undeploy-prod: ## Remove production deployment
-	@echo "Removing production deployment..."
-	./scripts/undeploy.sh prod
+undeploy: ## Remove deployment (use NAMESPACE=<name> and OVERLAY=<name> to configure)
+	@echo "Removing deployment from namespace $(NAMESPACE) using overlay $(OVERLAY)..."
+	./scripts/undeploy.sh $(OVERLAY) $(NAMESPACE)
 
 # Environment Setup
 env-setup: ## Copy environment example files
 	@echo "Setting up environment files..."
 	@if [ ! -f backend/.env ]; then cp backend/.env.example backend/.env; echo "Created backend/.env"; fi
 	@if [ ! -f frontend/.env ]; then cp frontend/.env.example frontend/.env; echo "Created frontend/.env"; fi
+	@if [ ! -f .env ] && [ -f .env.example ]; then cp .env.example .env; echo "Created root .env"; fi
+
+env-check: ## Display loaded environment variables (for debugging)
+	@echo "Environment variables loaded:"
+	@echo "REGISTRY: $(REGISTRY)"
+	@echo "TAG: $(TAG)"
+	@echo "NAMESPACE: $(NAMESPACE)"
+	@echo "OVERLAY: $(OVERLAY)"
+	@echo "FRONTEND_PORT: $${FRONTEND_PORT:-not set}"
+	@echo "BACKEND_PORT: $${BACKEND_PORT:-not set}"
+	@if [ -n "$(ENV)" ]; then echo "ENV: $(ENV) (loading .env.$(ENV).local)"; fi
 
 env-setup-k8s: ## Copy Kubernetes example files for configuration
 	@echo "Setting up Kubernetes configuration files..."
-	@for env in dev prod; do \
-		if [ ! -f k8s/overlays/$$env/.env ]; then \
-			cp k8s/overlays/$$env/.env.example k8s/overlays/$$env/.env; \
-			echo "Created k8s/overlays/$$env/.env - EDIT THIS FILE with your API keys"; \
+	@for overlay in $$(ls -d k8s/overlays/*/ 2>/dev/null | xargs -n1 basename); do \
+		if [ -f k8s/overlays/$$overlay/.env.example ] && [ ! -f k8s/overlays/$$overlay/.env ]; then \
+			cp k8s/overlays/$$overlay/.env.example k8s/overlays/$$overlay/.env; \
+			echo "Created k8s/overlays/$$overlay/.env - EDIT THIS FILE with your API keys"; \
 		fi; \
-		if [ ! -f k8s/overlays/$$env/mcp-config.json ]; then \
-			cp k8s/overlays/$$env/mcp-config.example.json k8s/overlays/$$env/mcp-config.json; \
-			echo "Created k8s/overlays/$$env/mcp-config.json"; \
+		if [ -f k8s/overlays/$$overlay/mcp-config.example.json ] && [ ! -f k8s/overlays/$$overlay/mcp-config.json ]; then \
+			cp k8s/overlays/$$overlay/mcp-config.example.json k8s/overlays/$$overlay/mcp-config.json; \
+			echo "Created k8s/overlays/$$overlay/mcp-config.json"; \
 		fi; \
 	done
 	@echo "⚠️  IMPORTANT: Edit the .env files with your actual API keys before deploying!"
