@@ -17,10 +17,10 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     # Startup
     logger.info(f"Starting application in {settings.environment} mode")
-    logger.info(f"Claude integration: {'Enabled' if settings.anthropic_api_key else 'Disabled'}")
+    logger.info(f"LiteLLM integration: {'Enabled' if settings.api_key else 'Disabled'}")
     
-    if settings.anthropic_api_key:
-        logger.info(f"Claude model: {settings.anthropic_model}")
+    if settings.api_key:
+        logger.info(f"LLM model: {settings.model} (via LiteLLM)")
     
     # Initialize MCP service
     logger.info("Initializing MCP service...")

@@ -16,28 +16,28 @@ async def handle_non_streaming_chat(request: ChatCompletionRequest) -> ChatCompl
     Returns a complete response with the full message
     """
     try:
-        # Check if we have Claude service available
-        from app.services.claude import claude_service
+        # Use LiteLLM service for LLM interactions
+        from app.services.litellm_service import litellm_service
         
-        if not claude_service.is_available:
+        if not litellm_service.is_available:
             # Fallback to echo mode with informative message
             response_text = (
                 f"Echo: {request.message}\n\n"
-                f"Note: Claude AI is not available. No Anthropic API key has been provided. "
-                f"Please set the ANTHROPIC_API_KEY environment variable to enable Claude."
+                f"Note: LLM service is not available. No API key has been provided. "
+                f"Please set the ANTHROPIC_API_KEY environment variable to enable LLM."
             )
         else:
-            # Use Claude to generate response
+            # Use LiteLLM to generate response
             try:
-                response_text = await claude_service.get_completion(
+                response_text = await litellm_service.get_completion(
                     message=request.message,
                     user_id=request.user_id
                 )
-            except Exception as claude_error:
-                # If Claude fails, fallback to echo with error message
+            except Exception as llm_error:
+                # If LLM fails, fallback to echo with error message
                 response_text = (
                     f"Echo: {request.message}\n\n"
-                    f"Note: Claude encountered an error: {str(claude_error)}"
+                    f"Note: LLM encountered an error: {str(llm_error)}"
                 )
         
         bot_message = ChatMessage(
@@ -66,17 +66,17 @@ async def generate_streaming_response(request: ChatCompletionRequest) -> AsyncGe
     Yields Server-Sent Events with incremental content
     """
     try:
-        # Check if we have Claude service available
-        from app.services.claude import claude_service
+        # Use LiteLLM service for LLM interactions
+        from app.services.litellm_service import litellm_service
         
         message_id = str(datetime.now().timestamp())
         
-        if not claude_service.is_available:
+        if not litellm_service.is_available:
             # Fallback to echo mode with informative message
             full_message = (
                 f"Echo: {request.message}\n\n"
-                f"Note: Claude AI is not available. No Anthropic API key has been provided. "
-                f"Please set the ANTHROPIC_API_KEY environment variable to enable Claude."
+                f"Note: LLM service is not available. No API key has been provided. "
+                f"Please set the ANTHROPIC_API_KEY environment variable to enable LLM."
             )
             
             # Stream the full message character by character
@@ -89,9 +89,9 @@ async def generate_streaming_response(request: ChatCompletionRequest) -> AsyncGe
                 yield f"data: {json.dumps(data)}\n\n"
                 await asyncio.sleep(0.01)  # Faster for the notice
         else:
-            # Use Claude streaming
+            # Use LiteLLM streaming
             try:
-                async for chunk in claude_service.get_streaming_completion(
+                async for chunk in litellm_service.get_streaming_completion(
                     message=request.message,
                     user_id=request.user_id
                 ):
@@ -101,9 +101,9 @@ async def generate_streaming_response(request: ChatCompletionRequest) -> AsyncGe
                         "content": chunk
                     }
                     yield f"data: {json.dumps(data)}\n\n"
-            except Exception as claude_error:
-                # If Claude fails, send error message
-                error_msg = f"\n\nError: Claude encountered an error: {str(claude_error)}"
+            except Exception as llm_error:
+                # If LLM fails, send error message
+                error_msg = f"\n\nError: LLM encountered an error: {str(llm_error)}"
                 for char in error_msg:
                     data = {
                         "id": message_id,

@@ -19,7 +19,7 @@ NAMESPACE ?= chatbot
 OVERLAY ?= deploy
 
 
-.PHONY: help setup dev build test clean push deploy undeploy kustomize env-setup env-check env-setup-k8s health-backend health-frontend fresh-start quick-start
+.PHONY: help setup dev build build-prod test clean push push-prod deploy deploy-dev deploy-prod undeploy undeploy-dev undeploy-prod kustomize kustomize-dev kustomize-prod env-setup env-check env-setup-k8s health-backend health-frontend fresh-start quick-start
 
 # Default target
 help: ## Show this help message
@@ -60,6 +60,7 @@ build: build-frontend ## Build frontend and container images
 	@echo "Building container images for $(REGISTRY) with tag $(TAG)..."
 	./scripts/build-images.sh $(TAG) $(REGISTRY)
 
+
 # Testing
 test: ## Run all tests (frontend and backend)
 	@echo "Running frontend tests..."
@@ -83,9 +84,11 @@ push: ## Push container images to registry
 	@echo "Pushing images to $(REGISTRY) with tag $(TAG)..."
 	./scripts/push-images.sh $(TAG) $(REGISTRY)
 
+
 # OpenShift/Kubernetes Deployment
 kustomize: ## Preview deployment manifests (use OVERLAY=<name> to specify overlay)
 	./scripts/kustomize.sh $(OVERLAY)
+
 
 deploy: ## Deploy to Kubernetes/OpenShift (use NAMESPACE=<name> and OVERLAY=<name> to configure)
 	@echo "Deploying to namespace $(NAMESPACE) using overlay $(OVERLAY)..."

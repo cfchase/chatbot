@@ -6,7 +6,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104%2B-009688.svg)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-18%2B-61DAFB.svg)](https://reactjs.org/)
 
-A full-stack AI chatbot application with React frontend (Vite) using PatternFly and FastAPI backend, featuring Claude AI integration with MCP (Model Context Protocol) support. Ready for deployment to OpenShift.
+A full-stack AI chatbot application with React frontend (Vite) using PatternFly and FastAPI backend, featuring LiteLLM integration for multiple LLM providers (OpenAI, Anthropic Claude, Google Gemini, and OpenAI-compatible endpoints) with MCP (Model Context Protocol) support. Ready for deployment to OpenShift.
 
 ![UI Screenshot](docs/ui.png)
 
@@ -27,8 +27,8 @@ A full-stack AI chatbot application with React frontend (Vite) using PatternFly 
 
 ## Features
 
-- 🤖 **Claude AI Integration**: Powered by Anthropic's Claude with configurable models
-- 🔧 **MCP Support**: Extend Claude with custom tools via Model Context Protocol
+- 🤖 **Multi-LLM Support**: Powered by LiteLLM with support for OpenAI GPT, Anthropic Claude, Google Gemini, and OpenAI-compatible endpoints (vLLM, LocalAI)
+- 🔧 **MCP Support**: Extend LLMs with custom tools via Model Context Protocol
 - 🎨 **Modern UI**: React with TypeScript, Vite, and PatternFly components
 - 🌙 **Dark Mode**: Built-in theme toggle with dark mode as default
 - 🚀 **Production Ready**: Containerized with Docker and OpenShift deployment
@@ -40,8 +40,8 @@ A full-stack AI chatbot application with React frontend (Vite) using PatternFly 
 ## Architecture
 
 - **Frontend**: React with TypeScript and Vite - Modern chat interface with PatternFly
-- **Backend**: FastAPI with Python - AI chat API with Claude integration
-- **AI Integration**: Claude API with MCP (Model Context Protocol) support for custom tools
+- **Backend**: FastAPI with Python - AI chat API with LiteLLM integration
+- **AI Integration**: LiteLLM unified interface supporting OpenAI, Claude, Gemini, and OpenAI-compatible endpoints
 - **Package Management**: UV for Python (fast), npm for Node.js
 - **Containerization**: Docker multi-stage builds for optimal size
 - **Deployment**: OpenShift with Kustomize for environment-specific configurations
@@ -73,8 +73,9 @@ A full-stack AI chatbot application with React frontend (Vite) using PatternFly 
 
 2. **Configure API keys**:
    ```bash
-   # Edit backend/.env with your Anthropic API key
+   # Edit backend/.env with your LLM provider API key
    vim backend/.env
+   # Set API_KEY and MODEL (defaults to OpenAI gpt-3.5-turbo)
    ```
 
 3. **Run locally**:
@@ -148,9 +149,17 @@ make env-setup-k8s
 Edit `backend/.env` (created from `.env.example`):
 
 ```env
-# Anthropic API Configuration
-ANTHROPIC_API_KEY=sk-ant-api03-your-anthropic-api-key-here
-ANTHROPIC_MODEL=claude-sonnet-4-20250514
+# LLM Configuration (via LiteLLM)
+API_KEY=your-api-key-here
+MODEL=gpt-3.5-turbo  # Default: OpenAI
+
+# Optional: Use different providers
+# MODEL=claude-3-sonnet-20240229  # Anthropic Claude
+# MODEL=gemini/gemini-pro         # Google Gemini
+
+# Optional: Use OpenAI-compatible endpoints (vLLM, LocalAI)
+# API_BASE_URL=http://localhost:8000/v1
+# PROVIDER=openai
 ```
 
 ### Frontend Configuration
@@ -186,14 +195,14 @@ The backend provides the following REST API endpoints:
 
 - `GET /` - Root endpoint with API information
 - `GET /api/v1/utils/health-check` - Health check endpoint
-- `POST /api/v1/chat/` - Chat with Claude (supports MCP tools)
+- `POST /api/v1/chat/` - Chat with LLM (supports MCP tools)
 - `GET /api/v1/chat/mcp/tools` - List available MCP tools
 
 ## MCP Integration
 
-This chatbot includes MCP (Model Context Protocol) support, allowing you to extend Claude's capabilities with custom tools from MCP servers. MCP enables:
+This chatbot includes MCP (Model Context Protocol) support, allowing you to extend your LLM's capabilities with custom tools from MCP servers. MCP enables:
 
-- **Custom Tools**: Add domain-specific tools that Claude can use
+- **Custom Tools**: Add domain-specific tools that your LLM can use
 - **External Integrations**: Connect to databases, APIs, or local services  
 - **Flexible Transports**: Support for stdio, HTTP, and WebSocket connections
 
@@ -221,7 +230,7 @@ if __name__ == "__main__":
     mcp.run()
 ```
 
-Add to `backend/mcp-config.json` and Claude will have access to your custom tools!
+Add to `backend/mcp-config.json` and your LLM will have access to your custom tools!
 
 ## Deployment
 
@@ -251,8 +260,8 @@ make push TAG=v1.0.0 REGISTRY=quay.io/yourorg
    # Copy and edit Kubernetes environment files
    make env-setup-k8s
    
-   # Edit k8s/overlays/dev/.env and k8s/overlays/prod/.env
-   # Add your Anthropic API key
+   # Edit k8s/overlays/deploy/.env
+   # Add your LLM provider API key
    ```
 
 2. **Login to OpenShift**:
@@ -260,27 +269,16 @@ make push TAG=v1.0.0 REGISTRY=quay.io/yourorg
    oc login --server=https://your-openshift-cluster
    ```
 
-3. **Deploy to development**:
+3. **Deploy to OpenShift**:
    ```bash
    # Build, push, and deploy
    make build && make push && make deploy
-   
-   # Or use explicit development commands
-   make build-dev && make push-dev && make deploy-dev
    ```
 
-4. **Deploy to production**:
+4. **Manage deployment**:
    ```bash
-   # Build, push, and deploy production
-   make build-prod && make push-prod && make deploy-prod
-   ```
-
-5. **Manage deployments**:
-   ```bash
-   make kustomize       # Preview dev manifests
-   make kustomize-prod  # Preview prod manifests
-   make undeploy        # Remove dev deployment
-   make undeploy-prod   # Remove prod deployment
+   make kustomize       # Preview manifests
+   make undeploy        # Remove deployment
    ```
 
 ## Development
@@ -360,8 +358,9 @@ make lint                 # Run frontend linting
    - Increase if running many MCP servers
 
 3. **API key issues**:
-   - Ensure ANTHROPIC_API_KEY is set correctly
-   - Check API key permissions and usage limits
+   - Ensure API_KEY is set correctly in backend/.env
+   - Check API key permissions and usage limits for your provider
+   - Verify MODEL matches your provider (e.g., gpt-3.5-turbo for OpenAI)
 
 4. **Build failures**:
    - Run `make clean` before rebuilding
