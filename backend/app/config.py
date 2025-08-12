@@ -16,13 +16,15 @@ class Settings(BaseSettings):
     port: int = Field(default=8000, description="Port to run the application on")
     environment: str = Field(default="development", description="Environment (development, production)")
     
-    # Anthropic Settings
-    anthropic_api_key: Optional[str] = Field(default=None, description="Anthropic API key for Claude")
-    anthropic_model: str = Field(default="claude-sonnet-4-20250514", description="Anthropic model to use")
+    # LiteLLM Configuration
+    api_key: Optional[str] = Field(default=None, description="API key for the LLM provider")
+    model: str = Field(default="gpt-3.5-turbo", description="Model to use (e.g., 'gpt-4', 'claude-3-sonnet-20240229', 'gemini-pro')")
+    provider: Optional[str] = Field(default=None, description="Optional: Override LLM provider (auto-detected from model by default)")
+    api_base_url: Optional[str] = Field(default=None, description="Optional: Custom API base URL for OpenAI-compatible endpoints")
     
     # Model Settings
-    max_tokens: int = Field(default=1024, description="Maximum tokens for Claude responses")
-    temperature: float = Field(default=0.7, description="Temperature for Claude responses")
+    max_tokens: int = Field(default=1024, description="Maximum tokens for LLM responses")
+    temperature: float = Field(default=0.7, description="Temperature for LLM responses")
     
     # MCP Settings
     mcp_config_path: str = Field(default="mcp-config.json", description="Path to MCP configuration file")

@@ -5,40 +5,40 @@ from fastapi.testclient import TestClient
 from main import app
 
 
-class MockClaudeService:
-    """Mock Claude service for testing"""
+class MockLiteLLMService:
+    """Mock LiteLLM service for testing"""
     
     @property
     def is_available(self) -> bool:
         return True
     
-    async def get_completion(self, message: str, user_id: str = None) -> str:
+    async def get_completion(self, message: str, user_id: str = None, conversation_history = None) -> str:
         if not message.strip():
             return "I received an empty message. How can I help you?"
-        return f"Mock Claude response to: {message}"
+        return f"Mock LLM response to: {message}"
     
-    async def get_streaming_completion(self, message: str, user_id: str = None):
+    async def get_streaming_completion(self, message: str, user_id: str = None, conversation_history = None):
         """Mock streaming completion"""
         if not message.strip():
             chunks = ["I received an empty message. ", "How can I help you?"]
         else:
-            chunks = ["Mock ", "Claude ", "streaming ", f"response to: {message}"]
+            chunks = ["Mock ", "LLM ", "streaming ", f"response to: {message}"]
         
         for chunk in chunks:
             yield chunk
 
 
 @pytest.fixture
-def mock_claude_service():
-    """Fixture to provide mocked Claude service"""
-    return MockClaudeService()
+def mock_litellm_service():
+    """Fixture to provide mocked LiteLLM service"""
+    return MockLiteLLMService()
 
 
-def test_chat_completion_non_streaming(mock_claude_service):
-    """Test non-streaming chat completion endpoint with mocked Claude"""
+def test_chat_completion_non_streaming(mock_litellm_service):
+    """Test non-streaming chat completion endpoint with mocked LiteLLM"""
     client = TestClient(app)
     
-    with patch('app.services.claude.claude_service', mock_claude_service):
+    with patch('app.services.litellm_service.litellm_service', mock_litellm_service):
         response = client.post(
             "/api/v1/chat/completions",
             json={
@@ -58,7 +58,7 @@ def test_chat_completion_non_streaming(mock_claude_service):
     message = data["message"]
     assert "id" in message
     assert "text" in message
-    assert "Mock Claude response to: Hello, test!" == message["text"]
+    assert "Mock LLM response to: Hello, test!" == message["text"]
     assert message["sender"] == "bot"
     assert "timestamp" in message
     
@@ -69,11 +69,11 @@ def test_chat_completion_non_streaming(mock_claude_service):
     assert "total_tokens" in usage
 
 
-def test_chat_completion_streaming(mock_claude_service):
-    """Test streaming chat completion endpoint with mocked Claude"""
+def test_chat_completion_streaming(mock_litellm_service):
+    """Test streaming chat completion endpoint with mocked LiteLLM"""
     client = TestClient(app)
     
-    with patch('app.services.claude.claude_service', mock_claude_service):
+    with patch('app.services.litellm_service.litellm_service', mock_litellm_service):
         response = client.post(
             "/api/v1/chat/completions",
             json={
@@ -113,14 +113,14 @@ def test_chat_completion_streaming(mock_claude_service):
     assert len(done_events) == 1
     
     # Check the accumulated content contains expected response
-    assert "Mock Claude streaming response to: Hi there" == content
+    assert "Mock LLM streaming response to: Hi there" == content
 
 
-def test_chat_completion_default_no_stream(mock_claude_service):
+def test_chat_completion_default_no_stream(mock_litellm_service):
     """Test that stream defaults to False when not provided"""
     client = TestClient(app)
     
-    with patch('app.services.claude.claude_service', mock_claude_service):
+    with patch('app.services.litellm_service.litellm_service', mock_litellm_service):
         response = client.post(
             "/api/v1/chat/completions",
             json={
@@ -133,14 +133,14 @@ def test_chat_completion_default_no_stream(mock_claude_service):
     
     # Should return non-streaming response
     assert "message" in data
-    assert "Mock Claude response to: Test default" == data["message"]["text"]
+    assert "Mock LLM response to: Test default" == data["message"]["text"]
 
 
-def test_chat_completion_empty_message(mock_claude_service):
+def test_chat_completion_empty_message(mock_litellm_service):
     """Test handling of empty message"""
     client = TestClient(app)
     
-    with patch('app.services.claude.claude_service', mock_claude_service):
+    with patch('app.services.litellm_service.litellm_service', mock_litellm_service):
         response = client.post(
             "/api/v1/chat/completions",
             json={
@@ -154,11 +154,11 @@ def test_chat_completion_empty_message(mock_claude_service):
     assert "I received an empty message. How can I help you?" == data["message"]["text"]
 
 
-def test_chat_completion_with_user_id(mock_claude_service):
+def test_chat_completion_with_user_id(mock_litellm_service):
     """Test chat completion with user_id"""
     client = TestClient(app)
     
-    with patch('app.services.claude.claude_service', mock_claude_service):
+    with patch('app.services.litellm_service.litellm_service', mock_litellm_service):
         response = client.post(
             "/api/v1/chat/completions",
             json={
@@ -169,21 +169,21 @@ def test_chat_completion_with_user_id(mock_claude_service):
     
     assert response.status_code == 200
     data = response.json()
-    assert "Mock Claude response to: Hello" == data["message"]["text"]
+    assert "Mock LLM response to: Hello" == data["message"]["text"]
 
 
-def test_chat_completion_claude_unavailable():
-    """Test chat completion when Claude service is unavailable"""
+def test_chat_completion_litellm_unavailable():
+    """Test chat completion when LiteLLM service is unavailable"""
     
-    class MockUnavailableClaudeService:
+    class MockUnavailableLiteLLMService:
         @property
         def is_available(self) -> bool:
             return False
     
     client = TestClient(app)
-    mock_service = MockUnavailableClaudeService()
+    mock_service = MockUnavailableLiteLLMService()
     
-    with patch('app.services.claude.claude_service', mock_service):
+    with patch('app.services.litellm_service.litellm_service', mock_service):
         response = client.post(
             "/api/v1/chat/completions",
             json={
@@ -197,24 +197,24 @@ def test_chat_completion_claude_unavailable():
     assert "message" in data
     # Should fallback to echo mode
     assert "Echo: Hello" in data["message"]["text"]
-    assert "Claude AI is not available" in data["message"]["text"]
+    assert "LLM service is not available" in data["message"]["text"]
 
 
-def test_chat_completion_claude_error(mock_claude_service):
+def test_chat_completion_litellm_error(mock_litellm_service):
     """Test chat completion when Claude service throws an error"""
     
-    class MockErrorClaudeService:
+    class MockErrorLiteLLMService:
         @property
         def is_available(self) -> bool:
             return True
             
-        async def get_completion(self, message: str, user_id: str = None) -> str:
+        async def get_completion(self, message: str, user_id: str = None, conversation_history = None) -> str:
             raise Exception("API rate limit exceeded")
     
     client = TestClient(app)
-    mock_service = MockErrorClaudeService()
+    mock_service = MockErrorLiteLLMService()
     
-    with patch('app.services.claude.claude_service', mock_service):
+    with patch('app.services.litellm_service.litellm_service', mock_service):
         response = client.post(
             "/api/v1/chat/completions",
             json={
@@ -228,22 +228,22 @@ def test_chat_completion_claude_error(mock_claude_service):
     assert "message" in data
     # Should fallback to echo mode with error message
     assert "Echo: Hello" in data["message"]["text"]
-    assert "Claude encountered an error" in data["message"]["text"]
+    assert "LLM encountered an error" in data["message"]["text"]
     assert "API rate limit exceeded" in data["message"]["text"]
 
 
-def test_chat_completion_streaming_claude_unavailable():
-    """Test streaming chat completion when Claude service is unavailable"""
+def test_chat_completion_streaming_litellm_unavailable():
+    """Test streaming chat completion when LiteLLM service is unavailable"""
     
-    class MockUnavailableClaudeService:
+    class MockUnavailableLiteLLMService:
         @property
         def is_available(self) -> bool:
             return False
     
     client = TestClient(app)
-    mock_service = MockUnavailableClaudeService()
+    mock_service = MockUnavailableLiteLLMService()
     
-    with patch('app.services.claude.claude_service', mock_service):
+    with patch('app.services.litellm_service.litellm_service', mock_service):
         response = client.post(
             "/api/v1/chat/completions",
             json={
@@ -267,4 +267,4 @@ def test_chat_completion_streaming_claude_unavailable():
                 pass
     
     assert "Echo: Hello" in content
-    assert "Claude AI is not available" in content
+    assert "LLM service is not available" in content

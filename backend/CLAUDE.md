@@ -10,7 +10,7 @@ This file provides backend-specific guidance to Claude Code when working with th
 - Uvicorn as ASGI server
 - CORS middleware for frontend integration
 - MCP (Model Context Protocol) integration for AI capabilities
-- Anthropic Claude AI integration
+- LiteLLM integration for unified LLM interface (OpenAI, Anthropic, Google, etc.)
 - Structured logging and error handling
 - Pydantic models for type safety and validation
 
@@ -86,12 +86,45 @@ async def new_endpoint(request: NewRequest):
 
 ## Configuration
 
-### Environment Variables
-Backend configuration through `.env` file:
-- `ANTHROPIC_API_KEY` - Required for Claude AI integration
-- `ANTHROPIC_MODEL` - Claude model to use (default: claude-sonnet-4-20250514)
+### LLM Configuration (via LiteLLM)
+The backend uses LiteLLM to provide a unified interface for multiple LLM providers. Configure through `.env` file:
+
+#### Basic Configuration (OpenAI - Default)
+```env
+API_KEY=your_openai_api_key_here
+MODEL=gpt-3.5-turbo
+```
+
+#### Using OpenAI-Compatible Endpoints (vLLM, LocalAI, etc.)
+```env
+API_KEY=your_api_key_here  # If required by endpoint
+MODEL=meta-llama/Llama-2-7b-chat-hf
+API_BASE_URL=http://localhost:8000/v1
+PROVIDER=openai  # Must be set to openai for compatibility
+```
+
+#### Other Providers
+```env
+# Anthropic Claude
+API_KEY=your_anthropic_api_key_here
+MODEL=claude-3-sonnet-20240229
+
+# Google Gemini
+API_KEY=your_gemini_api_key_here
+MODEL=gemini/gemini-pro
+```
+
+#### Supported Models
+- **OpenAI**: gpt-4, gpt-4-turbo, gpt-3.5-turbo
+- **Anthropic**: claude-3-opus-latest, claude-3-sonnet-20240229, claude-3-haiku-20240307
+- **Google**: gemini/gemini-pro, gemini/gemini-pro-vision
+- **OpenAI-Compatible**: Any model supported by your vLLM/LocalAI server
+
+### Other Environment Variables
 - `LOG_LEVEL` - Logging level (default: INFO)
 - `CORS_ORIGINS` - Allowed CORS origins (default: http://localhost:8080)
+- `MAX_TOKENS` - Maximum tokens for LLM responses (default: 1024)
+- `TEMPERATURE` - Temperature for LLM responses (default: 0.7)
 
 ### MCP Integration
 The backend integrates with MCP servers for enhanced AI capabilities:
