@@ -99,7 +99,8 @@ class LiteLLMService:
         try:
             # Prepare messages
             messages = conversation_history if conversation_history else []
-            if not conversation_history or (conversation_history and conversation_history[-1]["content"] != message):
+            # Only add user message if one was provided and it's different from the last message
+            if message and (not conversation_history or conversation_history[-1].get("content") != message):
                 messages.append({"role": "user", "content": message})
             
             # Get available MCP tools and convert to LiteLLM format
@@ -197,7 +198,8 @@ class LiteLLMService:
         try:
             # Prepare messages
             messages = conversation_history if conversation_history else []
-            if not conversation_history or (conversation_history and conversation_history[-1]["content"] != message):
+            # Only add user message if one was provided and it's different from the last message
+            if message and (not conversation_history or conversation_history[-1].get("content") != message):
                 messages.append({"role": "user", "content": message})
             
             # Get available MCP tools and convert to LiteLLM format
@@ -251,10 +253,10 @@ class LiteLLMService:
             
             # After streaming completes, handle any tool uses
             if tool_calls:
-                # Add assistant's message
+                # Add assistant's message (Anthropic requires non-empty content)
                 messages.append({
                     "role": "assistant",
-                    "content": None,
+                    "content": "",  # Empty string instead of None for compatibility
                     "tool_calls": [
                         {
                             "id": tc["id"],
@@ -286,7 +288,8 @@ class LiteLLMService:
                     })
                 
                 # Continue conversation with tool results
-                async for chunk in self.get_streaming_completion("", user_id, messages):
+                # Don't pass a new message, just continue with existing conversation
+                async for chunk in self.get_streaming_completion(None, user_id, messages):
                     yield chunk
                     
         except Exception as e:
