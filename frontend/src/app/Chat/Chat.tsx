@@ -34,6 +34,7 @@ interface ChatMessage {
   text: string;
   sender: 'user' | 'bot';
   timestamp: Date;
+  isStreaming?: boolean; // Track if this message is currently streaming
 }
 
 const Chat: React.FunctionComponent<IChatProps> = () => {
@@ -118,6 +119,7 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
             text: '',
             sender: 'bot',
             timestamp: new Date(),
+            isStreaming: true, // Mark as streaming initially
           };
           
           setMessages((prev) => [...prev, botMessage]);
@@ -131,12 +133,11 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
               if (event.type === 'content' && event.content) {
                 accumulatedText += event.content;
                 setMessages((prev) => {
-                  const newMessages = [...prev];
-                  const lastMessage = newMessages[newMessages.length - 1];
-                  if (lastMessage && lastMessage.id === botMessage.id) {
-                    lastMessage.text = accumulatedText;
-                  }
-                  return newMessages;
+                  return prev.map((msg) => 
+                    msg.id === botMessage.id
+                      ? { ...msg, text: accumulatedText, isStreaming: true }
+                      : msg
+                  );
                 });
                 
                 // Auto-scroll during streaming if user hasn't scrolled up (throttled)
@@ -147,6 +148,14 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
                   scrollTimeoutRef.current = setTimeout(() => scrollToBottom(), 200);
                 }
               } else if (event.type === 'done') {
+                // Mark streaming as complete
+                setMessages((prev) => {
+                  return prev.map((msg) => 
+                    msg.id === botMessage.id
+                      ? { ...msg, isStreaming: false }
+                      : msg
+                  );
+                });
                 setIsLoading(false);
                 streamControllerRef.current = null;
                 setAnnouncement('Message received');
@@ -316,12 +325,9 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
                 style={{ marginBottom: '16px' }} 
               />
             )}
-            {messages.map((message, index) => {
-              const isLastBotMessage = 
-                message.sender === 'bot' && 
-                index === messages.length - 1 && 
-                isLoading && 
-                streamingMode;
+            {messages.map((message) => {
+              // Show loading indicator only when streaming hasn't started (no text yet)
+              const showLoadingIndicator = message.isStreaming && message.text === '';
 
               return (
                 <Message
@@ -332,7 +338,7 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
                   timestamp={message.timestamp.toLocaleTimeString()}
                   avatar={message.sender === 'user' ? avatarImg : aiLogo}
                   name={message.sender === 'user' ? 'You' : 'AI Assistant'}
-                  isLoading={isLastBotMessage}
+                  isLoading={showLoadingIndicator}
                   extraContent={message.sender === 'bot' ? {
                     afterMainContent: <ImagePreview content={message.text} />
                   } : undefined}
