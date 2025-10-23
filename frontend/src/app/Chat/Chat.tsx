@@ -5,7 +5,7 @@ import {
   PageSection,
   Switch,
 } from '@patternfly/react-core';
-import { ArrowDownIcon } from '@patternfly/react-icons';
+import { ArrowDownIcon, CopyIcon, CheckIcon } from '@patternfly/react-icons';
 import {
   Chatbot,
   ChatbotContent,
@@ -24,6 +24,7 @@ import { ChatAPI, StreamingEvent } from '@app/api/chat';
 import aiLogo from '@app/images/ai-logo-transparent.svg';
 import avatarImg from '@app/images/user-avatar.svg';
 import { ImagePreview } from './ImagePreview';
+import rehypeHighlight from 'rehype-highlight';
 
 export interface IChatProps {
   sampleProp?: string;
@@ -57,6 +58,23 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
   const [userScrolledUp, setUserScrolledUp] = React.useState(false);
   const scrollTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const scrollDetectionTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const [copiedMessageId, setCopiedMessageId] = React.useState<string | null>(null);
+
+  // Convert chat messages to OpenAI format for API
+  const convertToOpenAIFormat = React.useCallback((messages: ChatMessage[]) => {
+    return messages.map(msg => ({
+      role: msg.sender === 'user' ? 'user' : 'assistant',
+      content: msg.text
+    }));
+  }, []);
+
+  // Handle copying message content
+  const handleCopyMessage = React.useCallback((messageId: string, text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedMessageId(messageId);
+      setTimeout(() => setCopiedMessageId(null), 2000);
+    });
+  }, []);
 
   // Scroll utility functions
   const scrollToBottom = React.useCallback((smooth = true) => {
@@ -113,7 +131,7 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
         if (streamingMode) {
           // Streaming mode
           let accumulatedText = '';
-          
+
           const botMessage: ChatMessage = {
             id: Date.now().toString() + '-bot',
             text: '',
@@ -121,12 +139,15 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
             timestamp: new Date(),
             isStreaming: true, // Mark as streaming initially
           };
-          
+
           setMessages((prev) => [...prev, botMessage]);
-          
+
+          // Get conversation history including the new user message
+          const conversationHistory = convertToOpenAIFormat([...messages, userMessage]);
+
           streamControllerRef.current = ChatAPI.createStreamingChatCompletion(
             {
-              message: userMessage.text,
+              messages: conversationHistory,
               stream: true,
             },
             (event: StreamingEvent) => {
@@ -183,8 +204,11 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
           );
         } else {
           // Non-streaming mode
+          // Get conversation history including the new user message
+          const conversationHistory = convertToOpenAIFormat([...messages, userMessage]);
+
           const response = await ChatAPI.createChatCompletion({
-            message: userMessage.text,
+            messages: conversationHistory,
             stream: false,
           });
 
@@ -328,6 +352,7 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
             {messages.map((message) => {
               // Show loading indicator only when streaming hasn't started (no text yet)
               const showLoadingIndicator = message.isStreaming && message.text === '';
+              const isCopied = copiedMessageId === message.id;
 
               return (
                 <Message
@@ -339,6 +364,23 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
                   avatar={message.sender === 'user' ? avatarImg : aiLogo}
                   name={message.sender === 'user' ? 'You' : 'AI Assistant'}
                   isLoading={showLoadingIndicator}
+                  additionalRehypePlugins={[rehypeHighlight]}
+                  actions={{
+                    actions: (
+                      <Button
+                        variant="plain"
+                        onClick={() => handleCopyMessage(message.id, message.text)}
+                        icon={isCopied ? <CheckIcon /> : <CopyIcon />}
+                        aria-label={isCopied ? 'Copied' : 'Copy message'}
+                        style={{
+                          minWidth: 'auto',
+                          color: isCopied
+                            ? 'var(--pf-t--global--color--status--success--default)'
+                            : 'var(--pf-t--global--text--color--subtle)',
+                        }}
+                      />
+                    ),
+                  }}
                   extraContent={message.sender === 'bot' ? {
                     afterMainContent: <ImagePreview content={message.text} />
                   } : undefined}

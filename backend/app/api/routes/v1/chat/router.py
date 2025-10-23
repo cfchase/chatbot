@@ -12,17 +12,33 @@ router = APIRouter()
 async def handle_non_streaming_chat(request: ChatCompletionRequest) -> ChatCompletionResponse:
     """
     Handle non-streaming chat completion
-    
+
     Returns a complete response with the full message
     """
     try:
         # Use LiteLLM service for LLM interactions
         from app.services.litellm_service import litellm_service
-        
+
+        # Determine which format is being used
+        conversation_history = None
+        message = None
+
+        if request.messages:
+            # New format: full conversation history
+            conversation_history = request.messages
+            # Extract the last user message for echo fallback
+            for msg in reversed(request.messages):
+                if msg.get("role") == "user":
+                    message = msg.get("content", "")
+                    break
+        else:
+            # Legacy format: single message
+            message = request.message
+
         if not litellm_service.is_available:
             # Fallback to echo mode with informative message
             response_text = (
-                f"Echo: {request.message}\n\n"
+                f"Echo: {message}\n\n"
                 f"Note: LLM service is not available. No API key has been provided. "
                 f"Please set the ANTHROPIC_API_KEY environment variable to enable LLM."
             )
@@ -30,13 +46,14 @@ async def handle_non_streaming_chat(request: ChatCompletionRequest) -> ChatCompl
             # Use LiteLLM to generate response
             try:
                 response_text = await litellm_service.get_completion(
-                    message=request.message,
-                    user_id=request.user_id
+                    message=message or "",
+                    user_id=request.user_id,
+                    conversation_history=conversation_history
                 )
             except Exception as llm_error:
                 # If LLM fails, fallback to echo with error message
                 response_text = (
-                    f"Echo: {request.message}\n\n"
+                    f"Echo: {message}\n\n"
                     f"Note: LLM encountered an error: {str(llm_error)}"
                 )
         
@@ -62,23 +79,39 @@ async def handle_non_streaming_chat(request: ChatCompletionRequest) -> ChatCompl
 async def generate_streaming_response(request: ChatCompletionRequest) -> AsyncGenerator[str, None]:
     """
     Generate streaming chat completion response
-    
+
     Yields Server-Sent Events with incremental content
     """
     try:
         # Use LiteLLM service for LLM interactions
         from app.services.litellm_service import litellm_service
-        
+
         message_id = str(datetime.now().timestamp())
-        
+
+        # Determine which format is being used
+        conversation_history = None
+        message = None
+
+        if request.messages:
+            # New format: full conversation history
+            conversation_history = request.messages
+            # Extract the last user message for echo fallback
+            for msg in reversed(request.messages):
+                if msg.get("role") == "user":
+                    message = msg.get("content", "")
+                    break
+        else:
+            # Legacy format: single message
+            message = request.message
+
         if not litellm_service.is_available:
             # Fallback to echo mode with informative message
             full_message = (
-                f"Echo: {request.message}\n\n"
+                f"Echo: {message}\n\n"
                 f"Note: LLM service is not available. No API key has been provided. "
                 f"Please set the ANTHROPIC_API_KEY environment variable to enable LLM."
             )
-            
+
             # Stream the full message character by character
             for char in full_message:
                 data = {
@@ -92,8 +125,9 @@ async def generate_streaming_response(request: ChatCompletionRequest) -> AsyncGe
             # Use LiteLLM streaming
             try:
                 async for chunk in litellm_service.get_streaming_completion(
-                    message=request.message,
-                    user_id=request.user_id
+                    message=message or "",
+                    user_id=request.user_id,
+                    conversation_history=conversation_history
                 ):
                     data = {
                         "id": message_id,
