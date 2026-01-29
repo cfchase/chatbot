@@ -1,5 +1,8 @@
 .tmp/
 
+# Node.js
+node_modules/
+
 # Claude Code
 .claude/
 

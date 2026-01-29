@@ -3,7 +3,8 @@ import axios from 'axios';
 const API_BASE_URL = '/api/v1';
 
 export interface ChatCompletionRequest {
-  message: string;
+  message?: string;
+  messages?: Array<{role: string; content: string}>;
   stream?: boolean;
   user_id?: string;
 }

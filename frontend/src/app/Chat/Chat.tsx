@@ -58,6 +58,21 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
   const scrollTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const scrollDetectionTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
+  // Convert chat messages to OpenAI format for API
+  const convertToOpenAIFormat = React.useCallback((messages: ChatMessage[]) => {
+    return messages.map(msg => ({
+      role: msg.sender === 'user' ? 'user' : 'assistant',
+      content: msg.text
+    }));
+  }, []);
+
+  // Handle copying message content
+  const handleCopyMessage = React.useCallback((text: string) => {
+    navigator.clipboard.writeText(text).catch((err) => {
+      console.error('Failed to copy to clipboard:', err);
+    });
+  }, []);
+
   // Scroll utility functions
   const scrollToBottom = React.useCallback((smooth = true) => {
     if (messageBoxRef.current) {
@@ -113,7 +128,7 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
         if (streamingMode) {
           // Streaming mode
           let accumulatedText = '';
-          
+
           const botMessage: ChatMessage = {
             id: Date.now().toString() + '-bot',
             text: '',
@@ -121,12 +136,15 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
             timestamp: new Date(),
             isStreaming: true, // Mark as streaming initially
           };
-          
+
           setMessages((prev) => [...prev, botMessage]);
-          
+
+          // Get conversation history including the new user message
+          const conversationHistory = convertToOpenAIFormat([...messages, userMessage]);
+
           streamControllerRef.current = ChatAPI.createStreamingChatCompletion(
             {
-              message: userMessage.text,
+              messages: conversationHistory,
               stream: true,
             },
             (event: StreamingEvent) => {
@@ -183,8 +201,11 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
           );
         } else {
           // Non-streaming mode
+          // Get conversation history including the new user message
+          const conversationHistory = convertToOpenAIFormat([...messages, userMessage]);
+
           const response = await ChatAPI.createChatCompletion({
-            message: userMessage.text,
+            messages: conversationHistory,
             stream: false,
           });
 
@@ -339,6 +360,11 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
                   avatar={message.sender === 'user' ? avatarImg : aiLogo}
                   name={message.sender === 'user' ? 'You' : 'AI Assistant'}
                   isLoading={showLoadingIndicator}
+                  actions={{
+                    copy: {
+                      onClick: () => handleCopyMessage(message.text),
+                    },
+                  }}
                   extraContent={message.sender === 'bot' ? {
                     afterMainContent: <ImagePreview content={message.text} />
                   } : undefined}
