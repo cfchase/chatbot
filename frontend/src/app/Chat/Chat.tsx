@@ -5,7 +5,7 @@ import {
   PageSection,
   Switch,
 } from '@patternfly/react-core';
-import { ArrowDownIcon, CopyIcon, CheckIcon } from '@patternfly/react-icons';
+import { ArrowDownIcon } from '@patternfly/react-icons';
 import {
   Chatbot,
   ChatbotContent,
@@ -24,7 +24,6 @@ import { ChatAPI, StreamingEvent } from '@app/api/chat';
 import aiLogo from '@app/images/ai-logo-transparent.svg';
 import avatarImg from '@app/images/user-avatar.svg';
 import { ImagePreview } from './ImagePreview';
-import rehypeHighlight from 'rehype-highlight';
 
 export interface IChatProps {
   sampleProp?: string;
@@ -58,8 +57,6 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
   const [userScrolledUp, setUserScrolledUp] = React.useState(false);
   const scrollTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const scrollDetectionTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
-  const copyTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
-  const [copiedMessageId, setCopiedMessageId] = React.useState<string | null>(null);
 
   // Convert chat messages to OpenAI format for API
   const convertToOpenAIFormat = React.useCallback((messages: ChatMessage[]) => {
@@ -70,19 +67,10 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
   }, []);
 
   // Handle copying message content
-  const handleCopyMessage = React.useCallback((messageId: string, text: string) => {
-    navigator.clipboard.writeText(text)
-      .then(() => {
-        setCopiedMessageId(messageId);
-        // Clear any existing timeout before setting a new one
-        if (copyTimeoutRef.current) {
-          clearTimeout(copyTimeoutRef.current);
-        }
-        copyTimeoutRef.current = setTimeout(() => setCopiedMessageId(null), 2000);
-      })
-      .catch((err) => {
-        console.error('Failed to copy to clipboard:', err);
-      });
+  const handleCopyMessage = React.useCallback((text: string) => {
+    navigator.clipboard.writeText(text).catch((err) => {
+      console.error('Failed to copy to clipboard:', err);
+    });
   }, []);
 
   // Scroll utility functions
@@ -283,7 +271,7 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
     }
   }, [scrollToBottom, autoScrollEnabled]);
 
-  // Cleanup scroll and copy timeouts on unmount
+  // Cleanup scroll timeouts on unmount
   React.useEffect(() => {
     return () => {
       if (scrollTimeoutRef.current) {
@@ -291,9 +279,6 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
       }
       if (scrollDetectionTimeoutRef.current) {
         clearTimeout(scrollDetectionTimeoutRef.current);
-      }
-      if (copyTimeoutRef.current) {
-        clearTimeout(copyTimeoutRef.current);
       }
     };
   }, []);
@@ -364,7 +349,6 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
             {messages.map((message) => {
               // Show loading indicator only when streaming hasn't started (no text yet)
               const showLoadingIndicator = message.isStreaming && message.text === '';
-              const isCopied = copiedMessageId === message.id;
 
               return (
                 <Message
@@ -376,22 +360,10 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
                   avatar={message.sender === 'user' ? avatarImg : aiLogo}
                   name={message.sender === 'user' ? 'You' : 'AI Assistant'}
                   isLoading={showLoadingIndicator}
-                  additionalRehypePlugins={[rehypeHighlight]}
                   actions={{
-                    actions: (
-                      <Button
-                        variant="plain"
-                        onClick={() => handleCopyMessage(message.id, message.text)}
-                        icon={isCopied ? <CheckIcon /> : <CopyIcon />}
-                        aria-label={isCopied ? 'Copied' : 'Copy message'}
-                        style={{
-                          minWidth: 'auto',
-                          color: isCopied
-                            ? 'var(--pf-t--global--color--status--success--default)'
-                            : 'var(--pf-t--global--text--color--subtle)',
-                        }}
-                      />
-                    ),
+                    copy: {
+                      onClick: () => handleCopyMessage(message.text),
+                    },
                   }}
                   extraContent={message.sender === 'bot' ? {
                     afterMainContent: <ImagePreview content={message.text} />
