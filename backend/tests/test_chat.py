@@ -137,9 +137,9 @@ def test_chat_completion_default_no_stream(mock_litellm_service):
 
 
 def test_chat_completion_empty_message(mock_litellm_service):
-    """Test handling of empty message"""
+    """Test that empty message is rejected with validation error"""
     client = TestClient(app)
-    
+
     with patch('app.services.litellm_service.litellm_service', mock_litellm_service):
         response = client.post(
             "/api/v1/chat/completions",
@@ -147,11 +147,11 @@ def test_chat_completion_empty_message(mock_litellm_service):
                 "message": ""
             }
         )
-    
-    assert response.status_code == 200
+
+    # Empty message should be rejected by validation
+    assert response.status_code == 422
     data = response.json()
-    assert "message" in data
-    assert "I received an empty message. How can I help you?" == data["message"]["text"]
+    assert "detail" in data
 
 
 def test_chat_completion_with_user_id(mock_litellm_service):
