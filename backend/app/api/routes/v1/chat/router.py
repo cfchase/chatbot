@@ -40,7 +40,7 @@ async def handle_non_streaming_chat(request: ChatCompletionRequest) -> ChatCompl
             response_text = (
                 f"Echo: {message}\n\n"
                 f"Note: LLM service is not available. No API key has been provided. "
-                f"Please set the ANTHROPIC_API_KEY environment variable to enable LLM."
+                f"Please set the API_KEY environment variable to enable LLM."
             )
         else:
             # Use LiteLLM to generate response
@@ -67,9 +67,9 @@ async def handle_non_streaming_chat(request: ChatCompletionRequest) -> ChatCompl
         return ChatCompletionResponse(
             message=bot_message,
             usage={
-                "prompt_tokens": len(request.message.split()),
+                "prompt_tokens": len((message or "").split()),
                 "completion_tokens": len(response_text.split()),
-                "total_tokens": len(request.message.split()) + len(response_text.split())
+                "total_tokens": len((message or "").split()) + len(response_text.split())
             }
         )
     except Exception as e:
@@ -109,7 +109,7 @@ async def generate_streaming_response(request: ChatCompletionRequest) -> AsyncGe
             full_message = (
                 f"Echo: {message}\n\n"
                 f"Note: LLM service is not available. No API key has been provided. "
-                f"Please set the ANTHROPIC_API_KEY environment variable to enable LLM."
+                f"Please set the API_KEY environment variable to enable LLM."
             )
 
             # Stream the full message character by character
@@ -167,14 +167,14 @@ async def generate_streaming_response(request: ChatCompletionRequest) -> AsyncGe
 async def create_chat_completion(request: ChatCompletionRequest):
     """
     Create a chat completion with optional streaming
-    
+
     This endpoint returns either a JSON response or a Server-Sent Events stream
     based on the 'stream' parameter in the request.
-    
+
     - stream=false (default): Returns a complete JSON response
     - stream=true: Returns a streaming response using Server-Sent Events
-    
-    It will be updated to use Claude AI in a future iteration.
+
+    Supports both legacy single message format and multi-turn conversation history.
     """
     if request.stream:
         # Return streaming response

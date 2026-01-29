@@ -58,6 +58,7 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
   const [userScrolledUp, setUserScrolledUp] = React.useState(false);
   const scrollTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const scrollDetectionTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const copyTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const [copiedMessageId, setCopiedMessageId] = React.useState<string | null>(null);
 
   // Convert chat messages to OpenAI format for API
@@ -70,10 +71,18 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
 
   // Handle copying message content
   const handleCopyMessage = React.useCallback((messageId: string, text: string) => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopiedMessageId(messageId);
-      setTimeout(() => setCopiedMessageId(null), 2000);
-    });
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        setCopiedMessageId(messageId);
+        // Clear any existing timeout before setting a new one
+        if (copyTimeoutRef.current) {
+          clearTimeout(copyTimeoutRef.current);
+        }
+        copyTimeoutRef.current = setTimeout(() => setCopiedMessageId(null), 2000);
+      })
+      .catch((err) => {
+        console.error('Failed to copy to clipboard:', err);
+      });
   }, []);
 
   // Scroll utility functions
@@ -274,7 +283,7 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
     }
   }, [scrollToBottom, autoScrollEnabled]);
 
-  // Cleanup scroll timeouts on unmount
+  // Cleanup scroll and copy timeouts on unmount
   React.useEffect(() => {
     return () => {
       if (scrollTimeoutRef.current) {
@@ -282,6 +291,9 @@ const Chat: React.FunctionComponent<IChatProps> = () => {
       }
       if (scrollDetectionTimeoutRef.current) {
         clearTimeout(scrollDetectionTimeoutRef.current);
+      }
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
       }
     };
   }, []);
