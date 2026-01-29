@@ -234,15 +234,15 @@ def test_chat_completion_litellm_error(mock_litellm_service):
 
 def test_chat_completion_streaming_litellm_unavailable():
     """Test streaming chat completion when LiteLLM service is unavailable"""
-    
+
     class MockUnavailableLiteLLMService:
         @property
         def is_available(self) -> bool:
             return False
-    
+
     client = TestClient(app)
     mock_service = MockUnavailableLiteLLMService()
-    
+
     with patch('app.services.litellm_service.litellm_service', mock_service):
         response = client.post(
             "/api/v1/chat/completions",
@@ -251,10 +251,10 @@ def test_chat_completion_streaming_litellm_unavailable():
                 "stream": True
             }
         )
-    
+
     assert response.status_code == 200
     assert response.headers["content-type"] == "text/event-stream; charset=utf-8"
-    
+
     # Parse response content
     content = ""
     for line in response.text.split('\n'):
@@ -265,6 +265,130 @@ def test_chat_completion_streaming_litellm_unavailable():
                     content += event_data.get("content", "")
             except json.JSONDecodeError:
                 pass
-    
+
     assert "Echo: Hello" in content
     assert "LLM service is not available" in content
+
+
+# Tests for multi-turn conversation format (messages array)
+
+def test_chat_completion_with_messages_array(mock_litellm_service):
+    """Test non-streaming chat with messages array format"""
+    client = TestClient(app)
+
+    with patch('app.services.litellm_service.litellm_service', mock_litellm_service):
+        response = client.post(
+            "/api/v1/chat/completions",
+            json={
+                "messages": [
+                    {"role": "user", "content": "Hello"},
+                    {"role": "assistant", "content": "Hi there!"},
+                    {"role": "user", "content": "What is my name?"}
+                ],
+                "stream": False
+            }
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+
+    assert "message" in data
+    assert "usage" in data
+    # The mock returns response based on last user message
+    assert "Mock LLM response to: What is my name?" == data["message"]["text"]
+
+    # Verify usage is calculated correctly (not causing AttributeError)
+    usage = data["usage"]
+    assert usage["prompt_tokens"] > 0
+    assert usage["completion_tokens"] > 0
+    assert usage["total_tokens"] == usage["prompt_tokens"] + usage["completion_tokens"]
+
+
+def test_chat_completion_streaming_with_messages_array(mock_litellm_service):
+    """Test streaming chat with messages array format"""
+    client = TestClient(app)
+
+    with patch('app.services.litellm_service.litellm_service', mock_litellm_service):
+        response = client.post(
+            "/api/v1/chat/completions",
+            json={
+                "messages": [
+                    {"role": "user", "content": "Hello"},
+                    {"role": "assistant", "content": "Hi!"},
+                    {"role": "user", "content": "Tell me a joke"}
+                ],
+                "stream": True
+            }
+        )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "text/event-stream; charset=utf-8"
+
+    # Parse response content
+    content = ""
+    for line in response.text.split('\n'):
+        if line.startswith('data: '):
+            try:
+                event_data = json.loads(line[6:])
+                if event_data.get("type") == "content":
+                    content += event_data.get("content", "")
+            except json.JSONDecodeError:
+                pass
+
+    assert "Mock LLM streaming response to: Tell me a joke" == content
+
+
+def test_chat_completion_no_message_or_messages():
+    """Test that request with neither message nor messages is rejected"""
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/chat/completions",
+        json={
+            "stream": False
+        }
+    )
+
+    assert response.status_code == 422
+    data = response.json()
+    assert "detail" in data
+
+
+def test_chat_completion_messages_only_no_legacy_message(mock_litellm_service):
+    """Test that messages array works without legacy message field"""
+    client = TestClient(app)
+
+    with patch('app.services.litellm_service.litellm_service', mock_litellm_service):
+        response = client.post(
+            "/api/v1/chat/completions",
+            json={
+                "messages": [
+                    {"role": "user", "content": "Just using messages array"}
+                ]
+            }
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "Mock LLM response to: Just using messages array" == data["message"]["text"]
+
+
+def test_chat_completion_messages_takes_precedence(mock_litellm_service):
+    """Test that messages array takes precedence over legacy message field"""
+    client = TestClient(app)
+
+    with patch('app.services.litellm_service.litellm_service', mock_litellm_service):
+        response = client.post(
+            "/api/v1/chat/completions",
+            json={
+                "message": "Legacy message",
+                "messages": [
+                    {"role": "user", "content": "Messages array content"}
+                ]
+            }
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    # Should use messages array, not legacy message
+    assert "Mock LLM response to: Messages array content" == data["message"]["text"]
